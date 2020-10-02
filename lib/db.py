@@ -64,6 +64,36 @@ class DB:
             cur = connection.cursor()
             cur.execute(add_platform, (instance_type, base_url))
 
+    def delete_platform(self, instance_type, base_url):
+        with self.connection() as connection:
+            del_platform = '''
+            DELETE FROM platforms
+            WHERE
+                type = %s and
+                base_url = %s;
+            '''
+            del_repos = '''
+            DELETE FROM repos
+            WHERE
+                platform_id = %s
+            '''
+            cur = connection.cursor()
+            _id = self.get_platform_id(instance_type, base_url)
+            cur.execute(del_repos, (_id,))
+            cur.execute(del_platform, (instance_type, base_url))
+
+    def get_platform_id(self, instance_type, base_url):
+        with self.connection() as connection:
+            select_platform = '''
+            SELECT id from platforms
+            WHERE
+                type = %s and
+                base_url = %s;
+            '''
+            cur = connection.cursor()
+            cur.execute(select_platform, (instance_type, base_url))
+            return cur.fetchone()
+
     def get_all_platforms(self):
         with self.connection() as connection:
             cur = connection.cursor()
@@ -83,6 +113,7 @@ class DB:
                 url
             ) VALUES (%s, %s, %s, %s, %s, %s, %s);
             '''
+
             fetch_result = '''
             SELECT id FROM repos
             WHERE
@@ -90,6 +121,7 @@ class DB:
                 name = %s and
                 owner_name = %s;
             '''
+
             update_result = '''
             UPDATE repos
             SET

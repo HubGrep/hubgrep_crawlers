@@ -39,4 +39,6 @@ class GenericCrawler:
         self.base_url = base_url
         self.path = path
         self.requests = requests.session()
-        
+    
+    def __str__(self):
+        return f'<{self.name}@{self.base_url}>'

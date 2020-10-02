@@ -7,6 +7,7 @@ from lib.platforms._generic import GenericResult, GenericCrawler
 
 logger = logging.getLogger(__name__)
 
+# https://developer.github.com/v3/search/
 
 class GiteaResult(GenericResult):
     def __init__(self, platform_id, search_result_item):
@@ -42,8 +43,13 @@ class GiteaSearch(GenericCrawler):
             path='api/v1/repos/search')
         self.request_url = urljoin(self.base_url, self.path)
 
-    def crawl(self):
-        page = 1
+    def crawl(self, state=None):
+        if not state:
+            page = 1
+        else:
+            page = state.get('page', False)
+            if not page:
+                logger.warning(f'{self} broken state, defaulting to start')
         results = True
         while results:
             params = dict(
