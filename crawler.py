@@ -38,8 +38,10 @@ def db_init():
 @cli.command()
 @click.argument('platform_type', type=click.Choice(platforms.keys()))
 @click.argument('base_url')
-def add_platform(platform_type, base_url):
-    db.platform_add(platform_type, base_url)
+@click.option('--auth_data', default=None)
+def add_platform(platform_type, base_url, auth_data):
+
+    db.platform_add(platform_type, base_url, auth_data)
 
 
 @cli.command()
@@ -58,37 +60,43 @@ def del_platform(platform_type, base_url):
 
 
 @cli.command()
-@click.option('--platform-base-url')
-@click.option('--platform')
+@click.option('--platform-base-url', default=None)
+@click.option('--platform', default=None)
 def crawl(platform_base_url, platform):
-    for platform_id, platform_type, base_url, last_run, state in db.platform_get_all():
-        Crawler: GenericCrawler = platforms.get(platform_type, False)
-        if Crawler:
-            crawler = Crawler(platform_id, base_url)
-            if not platform_base_url or platform_base_url == base_url:
-                if not platform or platform_type == platform:
-                    logger.info(
-                        f'starting {crawler}')
-                    for success, result_chunk, state in crawler.crawl(state=state):
-                        logger.info(
-                            f'got {len(result_chunk)} results from {crawler}')
-                        db.results_add_or_update(result_chunk)
-                        db.platform_update_state(platform_id, state)
+    for platform in db.platform_get_all(
+            platform=platform,
+            base_url=platform_base_url):
+        logger.info(f'starting {platform}')
+        for success, result_chunk, state in platform.crawl(
+                state=platform.state):
+            logger.info(f'got {len(result_chunk)} results from {platform}')
+            db.results_add_or_update(result_chunk)
+            db.platform_update_state(platform._id, state)
 
-                else:
-                    logger.warning(f'skipping {base_url}')
-            else:
-                logger.warning(f'skipping {base_url}')
-        else:
-            logger.warning(
-                f'could not find crawler class for type {platform_type}')
-    pass
-
+@cli.command()
+@click.argument('query_str')
+def query(query_str):
+    for line in db.query(query_str):
+        base_url = line[0]
+        owner_name = line[1]
+        name = line[2]
+        description = line[3]
+        click.echo(click.style(f'{owner_name} - {name}', bold=True) + f' @{base_url}')
+        click.echo(f'\t{description}')
 
 
 @cli.command()
 def stats():
-    click.echo(db.stats())
+    click.echo(
+        click.style(
+            '%s\t%-30s%s' %
+            ('type',
+             'base_url',
+             'repos'),
+            bold=True))
+    for stat in db.stats():
+
+        click.echo('%s\t%-30s%s' % stat)
 
 
 if __name__ == '__main__':

@@ -9,6 +9,7 @@ logger = logging.getLogger(__name__)
 
 # https://developer.github.com/v3/search/
 
+
 class GiteaResult(GenericResult):
     def __init__(self, platform_id, search_result_item):
         name = search_result_item['name']
@@ -36,11 +37,14 @@ class GiteaResult(GenericResult):
 class GiteaSearch(GenericCrawler):
     name = 'gitea'
 
-    def __init__(self, platform_id, base_url):
+    def __init__(self, id, base_url, state=None, auth_data=None, **kwargs):
         super().__init__(
-            platform_id=platform_id,
+            _id=id,
             base_url=base_url,
-            path='api/v1/repos/search')
+            path='api/v1/repos/search',
+            state=state,
+            auth_data=auth_data
+        )
         self.request_url = urljoin(self.base_url, self.path)
 
     def crawl(self, state=None):
@@ -63,9 +67,9 @@ class GiteaSearch(GenericCrawler):
                 logger.error(e)
                 return False, e
             result = response.json()
-            results = [GiteaResult(self.platform_id, item) for item in result['data']]
+            results = [GiteaResult(self._id, item)
+                       for item in result['data']]
             state = {'page': page}
             yield True, results, state
             page += 1
             time.sleep(.5)
-

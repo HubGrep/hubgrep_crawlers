@@ -2,6 +2,7 @@ import logging
 import time
 from urllib.parse import urljoin
 
+import requests
 from iso8601 import iso8601
 from lib.platforms._generic import GenericResult, GenericCrawler
 
@@ -77,7 +78,11 @@ class GitHubResult(GenericResult):
 
     def __init__(self, platform_id, search_result_item):
         name = search_result_item['name']
-        owner_name = search_result_item['owner']['login']
+        owner = search_result_item.get('owner', {})
+        if owner:
+            owner_name = owner.get('login', None)
+        else:
+            owner_name = None
         description = search_result_item['description'] or '?'
         last_commit = None
         created_at = None
@@ -127,12 +132,19 @@ class GitHubSearch(GenericCrawler):
 
     name = 'github'
 
-    def __init__(self, platform_id, base_url):
+    def __init__(self, id, base_url, state=None, auth_data=None, **kwargs):
         super().__init__(
-            platform_id=platform_id,
+            _id=id,
             base_url=base_url,
-            path='/repositories')
+            path='/repositories',
+            state=state,
+            auth_data=auth_data
+        )
         self.request_url = urljoin(self.base_url, self.path)
+        if auth_data:
+            self.requests.auth = (
+                auth_data['client_id'],
+                auth_data['client_secret'])
 
     def crawl(self, state=None):
         if not state:
@@ -157,7 +169,7 @@ class GitHubSearch(GenericCrawler):
                 continue
 
             result = response.json()
-            results = [GitHubResult(self.platform_id, item)
+            results = [GitHubResult(self._id, item)
                        for item in result]
             state = {'url': url}
             yield True, results, state
@@ -185,4 +197,4 @@ class GitHubSearch(GenericCrawler):
                 # not hit rate limit, and we dont have a next url - finished!
                 # reset state
                 yield True, [], None
-            time.sleep(.5)
+            time.sleep(.01)

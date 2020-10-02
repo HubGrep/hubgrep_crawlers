@@ -32,13 +32,14 @@ class GenericResult:
         return f'<{self.owner_name}/{self.name} @ {self.platform_id}>'
 
 
-
 class GenericCrawler:
-    def __init__(self, platform_id, base_url, path):
-        self.platform_id = platform_id
+    def __init__(self, _id, base_url, path, state, auth_data=None):
+        self._id = _id
         self.base_url = base_url
         self.path = path
+        self.auth_data = auth_data
+        self.state = state
         self.requests = requests.session()
-    
+
     def __str__(self):
         return f'<{self.name}@{self.base_url}>'
