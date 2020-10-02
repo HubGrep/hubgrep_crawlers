@@ -39,12 +39,12 @@ def db_init():
 @click.argument('platform_type', type=click.Choice(platforms.keys()))
 @click.argument('base_url')
 def add_platform(platform_type, base_url):
-    db.add_platform(platform_type, base_url)
+    db.platform_add(platform_type, base_url)
 
 
 @cli.command()
 def list_platforms():
-    click.echo(db.get_all_platforms())
+    click.echo(db.platforms_get_all())
 
 
 @cli.command()
@@ -54,14 +54,14 @@ def del_platform(platform_type, base_url):
     if click.confirm(
         f'really delete {platform_type}/{base_url}? this will delete all collected repos too!',
             default=False):
-        db.delete_platform(platform_type, base_url)
+        db.platform_delete(platform_type, base_url)
 
 
 @cli.command()
 @click.option('--platform-base-url')
 @click.option('--platform')
 def crawl(platform_base_url, platform):
-    for platform_id, platform_type, base_url, last_run in db.get_all_platforms():
+    for platform_id, platform_type, base_url, last_run, state in db.platform_get_all():
         Crawler: GenericCrawler = platforms.get(platform_type, False)
         if Crawler:
             crawler = Crawler(platform_id, base_url)
@@ -69,10 +69,12 @@ def crawl(platform_base_url, platform):
                 if not platform or platform_type == platform:
                     logger.info(
                         f'starting {crawler}')
-                    for success, result_chunk, state in crawler.crawl():
+                    for success, result_chunk, state in crawler.crawl(state=state):
                         logger.info(
                             f'got {len(result_chunk)} results from {crawler}')
-                        db.add_or_update_results(result_chunk)
+                        db.results_add_or_update(result_chunk)
+                        db.platform_update_state(platform_id, state)
+
                 else:
                     logger.warning(f'skipping {base_url}')
             else:
@@ -81,6 +83,7 @@ def crawl(platform_base_url, platform):
             logger.warning(
                 f'could not find crawler class for type {platform_type}')
     pass
+
 
 
 @cli.command()

@@ -175,8 +175,14 @@ class GitHubSearch(GenericCrawler):
 
             logger.info(
                 f'{self} {ratelimit_remaining} requests remaining, reset in {reset_in}s')
-            if ratelimit_remaining < 1 and url:
+            if ratelimit_remaining < 1:
                 logger.warning(
                     f'{self} rate limiting: {ratelimit_remaining} requests remaining, sleeping {reset_in}s')
                 time.sleep(reset_in)
+            elif url:
+                pass
+            else:
+                # not hit rate limit, and we dont have a next url - finished!
+                # reset state
+                yield True, [], None
             time.sleep(.5)

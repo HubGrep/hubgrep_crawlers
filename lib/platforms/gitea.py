@@ -64,7 +64,8 @@ class GiteaSearch(GenericCrawler):
                 return False, e
             result = response.json()
             results = [GiteaResult(self.platform_id, item) for item in result['data']]
-            yield True, results
+            state = {'page': page}
+            yield True, results, state
             page += 1
             time.sleep(.5)
 

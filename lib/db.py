@@ -1,6 +1,9 @@
 import os
 import psycopg2
 import logging
+from psycopg2.extras import Json
+
+from lib.platforms import platforms
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +39,8 @@ class DB:
                 id              serial PRIMARY KEY,
                 type            varchar(25),
                 base_url        varchar(256) unique,
-                last_crawl      timestamp
+                last_crawl      timestamp,
+                state           json
             );
             CREATE TABLE repos (
                 id              serial PRIMARY KEY,
@@ -53,7 +57,7 @@ class DB:
             cur = connection.cursor()
             cur.execute(create_tables)
 
-    def add_platform(self, instance_type, base_url):
+    def platform_add(self, instance_type, base_url):
         with self.connection() as connection:
             add_platform = """
             INSERT INTO platforms (
@@ -64,7 +68,7 @@ class DB:
             cur = connection.cursor()
             cur.execute(add_platform, (instance_type, base_url))
 
-    def delete_platform(self, instance_type, base_url):
+    def platform_delete(self, instance_type, base_url):
         with self.connection() as connection:
             del_platform = '''
             DELETE FROM platforms
@@ -82,25 +86,38 @@ class DB:
             cur.execute(del_repos, (_id,))
             cur.execute(del_platform, (instance_type, base_url))
 
-    def get_platform_id(self, instance_type, base_url):
+    def platform_get(self, instance_type, base_url):
         with self.connection() as connection:
             select_platform = '''
-            SELECT id from platforms
+            SELECT id, type, base_url, last_crawl, state from platforms
             WHERE
                 type = %s and
                 base_url = %s;
             '''
             cur = connection.cursor()
             cur.execute(select_platform, (instance_type, base_url))
+
             return cur.fetchone()
 
-    def get_all_platforms(self):
+    def platform_get_all(self):
         with self.connection() as connection:
             cur = connection.cursor()
             cur.execute('select * from platforms')
             return cur.fetchall()
 
-    def add_or_update_results(self, results):
+    def platform_update_state(self, _id, state):
+        with self.connection() as connection:
+            update_state = """
+            UPDATE platforms
+            SET
+                state = %s
+            WHERE
+                id = %s
+            """
+            cur = connection.cursor()
+            cur.execute(update_state, (Json(state), _id))
+
+    def results_add_or_update(self, results):
         with self.connection() as connection:
             add_result = '''
             INSERT INTO repos (
