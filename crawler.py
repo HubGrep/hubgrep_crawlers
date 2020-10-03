@@ -63,25 +63,32 @@ def del_platform(platform_type, base_url):
 @click.option('--platform-base-url', default=None)
 @click.option('--platform', default=None)
 def crawl(platform_base_url, platform):
-    for platform in db.platform_get_all(
+    all_platforms = db.platform_get_all(
             platform=platform,
-            base_url=platform_base_url):
+            base_url=platform_base_url)
+    logger.info(f'crawling {", ".join(str(p) for p in all_platforms)}')
+
+    for platform in all_platforms:
         logger.info(f'starting {platform}')
         for success, result_chunk, state in platform.crawl(
                 state=platform.state):
             logger.info(f'got {len(result_chunk)} results from {platform}')
             db.results_add_or_update(result_chunk)
             db.platform_update_state(platform._id, state)
+        db.platform_update_state(platform._id, None)
+    logger.info(f'finished {", ".join(str(p) for p in all_platforms)}')
 
 @cli.command()
 @click.argument('query_str')
-def query(query_str):
-    for line in db.query(query_str):
+@click.option('--limit', type=click.INT)
+def query(query_str, limit):
+    for line in db.query(query_str, limit):
         base_url = line[0]
         owner_name = line[1]
         name = line[2]
         description = line[3]
-        click.echo(click.style(f'{owner_name} - {name}', bold=True) + f' @{base_url}')
+        rank = line[4]
+        click.echo(click.style(f'{owner_name} - {name}', bold=True) + f' @{base_url} -- RANK {rank}')
         click.echo(f'\t{description}')
 
 

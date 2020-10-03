@@ -32,23 +32,30 @@ class DB:
             cur = connection.cursor()
             cur.execute(f'DROP DATABASE {db_name};')
 
-    def query(self, q):
+    def query(self, q, limit):
         query = """
         SELECT
             platforms.base_url,
             repos.name,
             repos.owner_name,
-            repos.description
+            repos.description,
+            ts_rank(to_tsvector('english', name || ' ' || description), plainto_tsquery(%s)) as rank
         FROM repos
         inner join platforms ON
             platforms.id = repos.platform_id
         WHERE
+            plainto_tsquery(%s)
+            @@
             to_tsvector('english', name || ' ' || description)
-            @@ to_tsquery(%s);
+        ORDER BY rank desc
         """
         with self.connection() as connection:
             cur = connection.cursor()
-            cur.execute(query, (q,))
+            if limit:
+                query += 'LIMIT %s'
+                cur.execute(query, (q, q, limit))
+            else:
+                cur.execute(query, (q, q, ))
             return cur.fetchall()
 
     def init(self):
@@ -206,12 +213,14 @@ class DB:
             SET
                 name = %s,
                 owner_name = %s,
+                created_at = %s,
                 last_commit = %s,
                 description = %s,
                 url = %s
             WHERE id = %s;
             '''
             cur = connection.cursor()
+            logger.debug(f'adding {len(results)} results')
             for result in results:
                 cur.execute(
                     fetch_result, (result.platform_id,
@@ -223,12 +232,13 @@ class DB:
                     _id = db_result[0]
                     cur.execute(update_result, (result.name,
                                                 result.owner_name,
+                                                result.created_at,
                                                 result.last_commit,
                                                 result.description,
                                                 result.html_url,
                                                 _id))
                 else:
-                    logger.debug(f'new result, adding {result}')
+                    #logger.debug(f'new result, adding {result}')
                     cur.execute(add_result, (result.platform_id,
                                              result.name,
                                              result.owner_name,

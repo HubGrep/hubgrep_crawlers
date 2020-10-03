@@ -11,13 +11,46 @@ logger = logging.getLogger(__name__)
 
 
 class GiteaResult(GenericResult):
+    """
+    {'id': 2,
+    'owner': {'id': 5,
+              'login': 'codi.cooperatiu',
+              'full_name': '',
+              'email': '',
+              'avatar_url': 'http://gitea.codi.coop/avatars/a89a876bb0456b115c77dbee684d409b',
+              'username': 'codi.cooperatiu'},
+    'name': 'codi-theme',
+    'full_name': 'codi.cooperatiu/codi-theme',
+    'description': '',
+    'empty': False,
+    'private': False,
+    'fork': False,
+    'parent': None,
+    'mirror': False,
+    'size': 5188,
+    'html_url': 'http://gitea.codi.coop/codi.cooperatiu/codi-theme',
+    'ssh_url': 'root@gitea.codi.coop:codi.cooperatiu/codi-theme.git',
+    'clone_url': 'http://gitea.codi.coop/codi.cooperatiu/codi-theme.git',
+    'website': '',
+    'stars_count': 0,
+    'forks_count': 0,
+    'watchers_count': 3,
+    'open_issues_count': 0,
+    'default_branch': 'master',
+    'created_at': '2018-01-25T18:52:35Z',
+    'updated_at': '2019-05-20T18:55:46Z',
+    'permissions': {'admin': False,
+                    'push': False,
+                    'pull': True}}
+    """
+
     def __init__(self, platform_id, search_result_item):
         name = search_result_item['name']
         owner_name = search_result_item['owner']['login']
         description = search_result_item['description'] or '?'
         last_commit = iso8601.parse_date(search_result_item['updated_at'])
         created_at = iso8601.parse_date(search_result_item['created_at'])
-        language = '?'
+        language = None
         license_dict = search_result_item.get('license')
         license = license_dict.get('name', None) if license_dict else None
 
