@@ -2,6 +2,9 @@ import requests
 from datetime import datetime
 from urllib.parse import urljoin
 
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
+
 
 class GenericResult:
     def __init__(
@@ -29,17 +32,22 @@ class GenericResult:
         pass
 
     def __str__(self):
-        return f'<{self.owner_name}/{self.name} @ {self.platform_id}>'
+        return f'<{self.owner_name} / {self.name} @ {self.platform_id}>'
 
 
-class GenericCrawler:
+class GenericIndexer:
     def __init__(self, _id, base_url, path, state, auth_data=None):
         self._id = _id
         self.base_url = base_url
         self.path = path
         self.auth_data = auth_data
         self.state = state
+
         self.requests = requests.session()
+        retries = Retry(total=3,
+                        backoff_factor=1,
+                        status_forcelist=[429, 500, 502, 503, 504])
+        self.requests.mount("https://", HTTPAdapter(max_retries=retries))
 
     def __str__(self):
         return f'<{self.name}@{self.base_url}>'

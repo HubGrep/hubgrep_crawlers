@@ -88,6 +88,10 @@ class DB:
              USING GIN
                  (to_tsvector('english', name || ' ' || description));
             """
+            create_repo_index = """
+            CREATE INDEX name_owner_name_index ON repos
+ (name, owner_name);
+            """
             cur = connection.cursor()
             cur.execute(create_tables)
             cur.execute(create_gin_index)
@@ -122,8 +126,8 @@ class DB:
                 platform_id = %s
             '''
             cur = connection.cursor()
-            _id = self.get_platform_id(instance_type, base_url)
-            cur.execute(del_repos, (_id,))
+            platform = self.platform_get(instance_type, base_url)
+            cur.execute(del_repos, (platform._id,))
             cur.execute(del_platform, (instance_type, base_url))
 
     def platform_get(self, instance_type, base_url):
@@ -137,7 +141,7 @@ class DB:
                 type = %s and
                 base_url = %s;
             '''
-            cur = connection.cursor()
+            cur = connection.cursor(cursor_factory=RealDictCursor)
             Platform = platforms.get(instance_type, False)
             if Platform:
                 cur.execute(select_platform, (instance_type, base_url))

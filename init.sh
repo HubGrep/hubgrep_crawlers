@@ -20,3 +20,5 @@ python crawler.py add-platform gitea 'https://git.jcg.re/'
 
 python crawler.py add-platform github 'https://api.github.com/'
 
+python crawler.py add-platform github 'https://gitlab.com/'
+

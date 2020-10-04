@@ -1,7 +1,7 @@
 import click
 import logging
 from lib.db import DB
-from lib.platforms._generic import GenericCrawler
+from lib.platforms._generic import GenericIndexer
 from lib.platforms import platforms
 
 from dotenv import load_dotenv
@@ -40,13 +40,22 @@ def db_init():
 @click.argument('base_url')
 @click.option('--auth_data', default=None)
 def add_platform(platform_type, base_url, auth_data):
-
     db.platform_add(platform_type, base_url, auth_data)
 
 
 @cli.command()
 def list_platforms():
     click.echo(db.platforms_get_all())
+
+@cli.command()
+@click.argument('platform_type', type=click.Choice(platforms.keys()))
+@click.argument('base_url')
+def reset_state_platform(platform_type, base_url):
+    if click.confirm(
+        f'really reset indexer state for {platform_type}/{base_url}?',
+            default=False):
+        platform = db.platform_get(platform_type, base_url)
+        db.platform_update_state(platform._id, None)
 
 
 @cli.command()
@@ -72,9 +81,10 @@ def crawl(platform_base_url, platform):
         logger.info(f'starting {platform}')
         for success, result_chunk, state in platform.crawl(
                 state=platform.state):
-            logger.info(f'got {len(result_chunk)} results from {platform}')
-            db.results_add_or_update(result_chunk)
-            db.platform_update_state(platform._id, state)
+            if success:
+                logger.info(f'got {len(result_chunk)} results from {platform}')
+                db.results_add_or_update(result_chunk)
+                db.platform_update_state(platform._id, state)
         db.platform_update_state(platform._id, None)
     logger.info(f'finished {", ".join(str(p) for p in all_platforms)}')
 
@@ -84,8 +94,8 @@ def crawl(platform_base_url, platform):
 def query(query_str, limit):
     for line in db.query(query_str, limit):
         base_url = line[0]
-        owner_name = line[1]
-        name = line[2]
+        name = line[1]
+        owner_name = line[2]
         description = line[3]
         rank = line[4]
         click.echo(click.style(f'{owner_name} - {name}', bold=True) + f' @{base_url} -- RANK {rank}')

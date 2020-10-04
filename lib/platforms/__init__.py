@@ -1,8 +1,9 @@
-from lib.platforms.gitea import GiteaSearch
-from lib.platforms.github import GitHubSearch
-
+from lib.platforms.gitea import GiteaIndexer
+from lib.platforms.github import GitHubIndexer
+from lib.platforms.gitlab import GitLabIndexer
 
 platforms = {
-    GiteaSearch.name: GiteaSearch,
-    GitHubSearch.name: GitHubSearch
+    GiteaIndexer.name: GiteaIndexer,
+    GitHubIndexer.name: GitHubIndexer,
+    GitLabIndexer.name: GitLabIndexer
 }

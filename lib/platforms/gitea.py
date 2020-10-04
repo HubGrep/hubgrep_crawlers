@@ -3,7 +3,7 @@ import time
 from urllib.parse import urljoin
 
 from iso8601 import iso8601
-from lib.platforms._generic import GenericResult, GenericCrawler
+from lib.platforms._generic import GenericResult, GenericIndexer
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +67,7 @@ class GiteaResult(GenericResult):
                          license=license)
 
 
-class GiteaSearch(GenericCrawler):
+class GiteaIndexer(GenericIndexer):
     name = 'gitea'
 
     def __init__(self, id, base_url, state=None, auth_data=None, **kwargs):
@@ -98,7 +98,7 @@ class GiteaSearch(GenericCrawler):
                 response = self.requests.get(self.request_url, params=params)
             except Exception as e:
                 logger.error(e)
-                return False, e
+                return False, [], {}
             result = response.json()
             results = [GiteaResult(self._id, item)
                        for item in result['data']]

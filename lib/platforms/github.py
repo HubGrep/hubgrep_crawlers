@@ -4,7 +4,7 @@ from urllib.parse import urljoin
 
 import requests
 from iso8601 import iso8601
-from lib.platforms._generic import GenericResult, GenericCrawler
+from lib.platforms._generic import GenericResult, GenericIndexer
 
 logger = logging.getLogger(__name__)
 
@@ -153,7 +153,7 @@ class GitHubResult(GenericResult):
                          license=license)
 
 
-class GitHubSearch(GenericCrawler):
+class GitHubIndexer(GenericIndexer):
     """
     Accept-Ranges: bytes
     Content-Length: 32867
