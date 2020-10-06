@@ -74,10 +74,6 @@ class GitLabIndexer(GenericIndexer):
             auth_data=auth_data
         )
         self.request_url = urljoin(self.base_url, self.path)
-        if auth_data:
-            self.requests.auth = (
-                auth_data['client_id'],
-                auth_data['client_secret'])
 
     def crawl(self, state=None):
         url = False
@@ -87,7 +83,7 @@ class GitLabIndexer(GenericIndexer):
                 logger.warning('{self} broken state, defaulting to start')
 
         if not url:
-            url = '/api/v4/projects?pagination=keyset&per_page=100&order_by=id&sort=asc'
+            url = '/api/v4/projects?pagination=keyset&per_page=100&order_by=id&sort=desc'
 
         while url:
             try:
@@ -110,4 +106,4 @@ class GitLabIndexer(GenericIndexer):
                 # not hit rate limit, and we dont have a next url - finished!
                 # reset state
                 yield True, [], None
-            time.sleep(.01)
+            time.sleep(.1)

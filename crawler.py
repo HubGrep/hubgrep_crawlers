@@ -45,7 +45,9 @@ def add_platform(platform_type, base_url, auth_data):
 
 @cli.command()
 def list_platforms():
-    click.echo(db.platforms_get_all())
+    for platform in db.platform_get_all():
+        import json
+        click.echo(f'{platform}, {json.dumps(platform.state)}')
 
 @cli.command()
 @click.argument('platform_type', type=click.Choice(platforms.keys()))
@@ -104,16 +106,17 @@ def query(query_str, limit):
 
 @cli.command()
 def stats():
+    _format = '%-15s%-30s%s'
     click.echo(
         click.style(
-            '%s\t%-30s%s' %
+            _format %
             ('type',
              'base_url',
              'repos'),
             bold=True))
     for stat in db.stats():
 
-        click.echo('%s\t%-30s%s' % stat)
+        click.echo(_format % stat)
 
 
 if __name__ == '__main__':

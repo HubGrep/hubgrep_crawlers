@@ -242,7 +242,7 @@ class DB:
                                                 result.html_url,
                                                 _id))
                 else:
-                    #logger.debug(f'new result, adding {result}')
+                    # logger.debug(f'new result, adding {result.__dict__}')
                     cur.execute(add_result, (result.platform_id,
                                              result.name,
                                              result.owner_name,

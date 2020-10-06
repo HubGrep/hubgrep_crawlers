@@ -45,7 +45,7 @@ class GenericIndexer:
 
         self.requests = requests.session()
         retries = Retry(total=3,
-                        backoff_factor=1,
+                        backoff_factor=10,
                         status_forcelist=[429, 500, 502, 503, 504])
         self.requests.mount("https://", HTTPAdapter(max_retries=retries))
 

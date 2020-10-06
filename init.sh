@@ -18,7 +18,10 @@ python crawler.py add-platform gitea 'https://gitea.anfuchs.de/'
 python crawler.py add-platform gitea 'https://git.sablun.org/'
 python crawler.py add-platform gitea 'https://git.jcg.re/'
 
-python crawler.py add-platform github 'https://api.github.com/'
+python crawler.py add-platform github 'https://api.github.com/' '{"client_id":"cf7789958d5bf68cbf24", "client_sec
+ ret": "d9cb10ffc01191940ba3a2eac0045b72a3b70ab8"}'
 
 python crawler.py add-platform github 'https://gitlab.com/'
+
+python crawler.py add-platform bitbucket 'https://api.bitbucket.org/' '{"client_id":"6Z8L46 tqTR6kQ32Lcj", "client_secret": "KrrEHfCepT4Aaqm7w99z8SBYbDJbQPJ4"}'
 
