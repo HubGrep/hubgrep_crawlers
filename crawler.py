@@ -1,9 +1,12 @@
+import sys
+import os
+import json
 import click
 import logging
 from lib.db import DB
 from lib.platforms._generic import GenericIndexer
 from lib.platforms import platforms
-
+from lib.util.stream_array import StreamArray
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -46,8 +49,8 @@ def add_platform(platform_type, base_url, auth_data):
 @cli.command()
 def list_platforms():
     for platform in db.platform_get_all():
-        import json
         click.echo(f'{platform}, {json.dumps(platform.state)}')
+
 
 @cli.command()
 @click.argument('platform_type', type=click.Choice(platforms.keys()))
@@ -61,7 +64,7 @@ def reset_state_platform(platform_type, base_url):
 
 
 @cli.command()
-@click.argument('platform_type', type=click.Choice(platforms.keys()))
+@click.argument('platform', type=click.Choice(platforms.keys()))
 @click.argument('base_url')
 def del_platform(platform_type, base_url):
     if click.confirm(
@@ -72,11 +75,11 @@ def del_platform(platform_type, base_url):
 
 @cli.command()
 @click.option('--platform-base-url', default=None)
-@click.option('--platform', default=None)
+@click.option('--platform', type=click.Choice(list(platforms.keys()) + [None]))
 def crawl(platform_base_url, platform):
     all_platforms = db.platform_get_all(
-            platform=platform,
-            base_url=platform_base_url)
+        platform=platform,
+        base_url=platform_base_url)
     logger.info(f'crawling {", ".join(str(p) for p in all_platforms)}')
 
     for platform in all_platforms:
@@ -85,10 +88,11 @@ def crawl(platform_base_url, platform):
                 state=platform.state):
             if success:
                 logger.info(f'got {len(result_chunk)} results from {platform}')
-                db.results_add_or_update(result_chunk)
+                db.repo_add_or_update(result_chunk)
                 db.platform_update_state(platform._id, state)
         db.platform_update_state(platform._id, None)
     logger.info(f'finished {", ".join(str(p) for p in all_platforms)}')
+
 
 @cli.command()
 @click.argument('query_str')
@@ -100,8 +104,26 @@ def query(query_str, limit):
         owner_name = line[2]
         description = line[3]
         rank = line[4]
-        click.echo(click.style(f'{owner_name} - {name}', bold=True) + f' @{base_url} -- RANK {rank}')
+        click.echo(click.style(
+            f'{owner_name} - {name}', bold=True) +
+            f' @{base_url} -- RANK {rank}')
         click.echo(f'\t{description}')
+
+
+@cli.command()
+@click.argument('path', type=click.Path(dir_okay=False,
+                                          file_okay=True, exists=False))
+@click.option('--platform-base-url', default=None)
+def export(path, platform_base_url):
+    def date_converter(o):
+        import datetime
+        if isinstance(o, datetime.datetime):
+            return datetime.datetime.isoformat(o)
+
+    with (open(path, 'w') if path != '-' else sys.stdout) as f:
+        stream_array = StreamArray(db.repo_get_all(platform_base_url))
+        for chunk in json.JSONEncoder(default=date_converter).iterencode(stream_array):
+            f.write(chunk)
 
 
 @cli.command()

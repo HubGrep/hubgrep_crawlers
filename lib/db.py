@@ -1,3 +1,4 @@
+import time
 import os
 import psycopg2
 import logging
@@ -95,6 +96,7 @@ class DB:
             cur = connection.cursor()
             cur.execute(create_tables)
             cur.execute(create_gin_index)
+            cur.execute(create_repo_index)
 
     def platform_add(self, instance_type, base_url, auth_data=None):
         with self.connection() as connection:
@@ -152,7 +154,6 @@ class DB:
     def platform_get_all(self, base_url=None, platform=None):
         with self.connection() as connection:
             cur = connection.cursor(cursor_factory=RealDictCursor)
-            print(cur)
             if base_url:
                 cur.execute('''
                 select *
@@ -190,7 +191,52 @@ class DB:
             cur = connection.cursor()
             cur.execute(update_state, (Json(state), _id))
 
-    def results_add_or_update(self, results):
+    def repo_get_all(self, platform_base_url=None):
+        with self.connection() as connection:
+            get_all_where = '''
+            select
+                platforms.type as type,
+                platforms.base_url as base_url,
+                name,
+                owner_name,
+                created_at,
+                last_commit,
+                description,
+                url
+            from
+                repos
+            inner join platforms ON
+                platforms.id = repos.platform_id
+            where
+                platforms.base_url = %s
+            '''
+
+            get_all = '''
+            select
+                platforms.type as type,
+                platforms.base_url as base_url,
+                name,
+                owner_name,
+                created_at,
+                last_commit,
+                description,
+                url
+            from
+                repos
+            inner join platforms ON
+                platforms.id = repos.platform_id
+            '''
+            cur = connection.cursor(
+                f'repo_get_all_{time.time()}',
+                cursor_factory=RealDictCursor)
+            if platform_base_url:
+                cur.execute(get_all_where, (platform_base_url, ))
+            else:
+                cur.execute(get_all)
+            for record in cur:
+                yield record
+
+    def repo_add_or_update(self, results):
         with self.connection() as connection:
             add_result = '''
             INSERT INTO repos (
