@@ -43,7 +43,11 @@ def db_init():
 @click.argument('base_url')
 @click.option('--auth_data', default=None)
 def add_platform(platform_type, base_url, auth_data):
-    db.platform_add(platform_type, base_url, auth_data)
+    auth_json = None
+    if auth_data:
+        auth_json = json.loads(auth_data)
+
+    db.platform_add(platform_type, base_url, auth_json)
 
 
 @cli.command()
@@ -64,7 +68,7 @@ def reset_state_platform(platform_type, base_url):
 
 
 @cli.command()
-@click.argument('platform', type=click.Choice(platforms.keys()))
+@click.argument('platform_type', type=click.Choice(platforms.keys()))
 @click.argument('base_url')
 def del_platform(platform_type, base_url):
     if click.confirm(

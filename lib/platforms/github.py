@@ -135,7 +135,11 @@ class GitHubResult(GenericResult):
         else:
             owner_name = None
         description = search_result_item['description'] or ''
-        last_commit = None
+        pushed_at = search_result_item.get('pushedAt', False)
+        if pushed_at:
+            last_commit = iso8601.parse_date(pushed_at)
+        else:
+            last_commit = None
         created_at = iso8601.parse_date(search_result_item['created_at'])
         language = None
         license = None
