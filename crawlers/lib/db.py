@@ -4,17 +4,17 @@ import psycopg2
 import logging
 from psycopg2.extras import Json, RealDictCursor
 
-from lib.platforms import platforms
+from crawlers.lib import platforms
 
 logger = logging.getLogger(__name__)
 
 
 class DB:
     def __init__(self):
-        self.user = os.environ['POSTGRES_USER']
-        self.password = os.environ['POSTGRES_PASSWORD']
-        self.db_name = os.environ['DB_NAME']
-        self.db_host = os.environ['DB_HOST']
+        self.user = os.environ['HUBGREP_CRAWLERS_POSTGRES_USER']
+        self.password = os.environ['HUBGREP_CRAWLERS_POSTGRES_PASSWORD']
+        self.db_name = os.environ['HUBGREP_CRAWLERS_POSTGRES_DB']
+        self.db_host = os.environ['HUBGREP_CRAWLERS_POSTGRES_HOST']
 
     def create(self):
         db_name = self.db_name
@@ -321,4 +321,6 @@ class DB:
             host=self.db_host,
             dbname=self.db_name,
             user=self.user,
-            password=self.password)
+            password=self.password,
+
+        )

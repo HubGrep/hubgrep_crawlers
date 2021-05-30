@@ -1,17 +1,29 @@
-# hubgrep indexer
+# HubGrep crawlers
 
 
-## set up
+## Development Setup
+Web-frontend:
+docker-compose up
+Navigate to 0.0.0.0:8080 in your browser to search. The config for what is included is found in docker-compose.yml.
 
-### github
+## API
 
-- get credentials
--
+## CLI:
 
-## backup
+To use the CLI, you must first have a shell inside a running container. Run:
 
-    python crawler.py export - | gzip -c > export.json.gz
+    docker-compose run --rm service /bin/bash
 
-## restore a backup
+Then, run a command (omit command to list all commands):
+
+    flask cli <COMMAND>
+
+## Backup
+
+    flask cli export - | gzip -c > export.json.gz
+
+## Restore a backup
+
+TODO
 
 

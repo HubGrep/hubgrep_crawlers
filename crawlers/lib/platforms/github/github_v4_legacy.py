@@ -1,23 +1,5 @@
-import json
-import pathlib
-import logging
-import time
-from urllib.parse import urljoin
-
-import datetime
-import requests
-from iso8601 import iso8601
-from lib.platforms._generic import GenericResult, GenericIndexer
-
-logger = logging.getLogger(__name__)
-
-
 """
-
-!!!
-
-it seems like its not possible to get a list of all repos in v4
-this is kept for reference
+Legacy note:
 
 - there is a limit at 1000 results for the search api (both rest and graphql)
 https://stackoverflow.com/questions/48371313/github-api-pagination-limit
@@ -25,14 +7,21 @@ https://developer.github.com/v3/search/#about-the-search-api
 
 - listing users does not work as it does in rest
 
-
 """
+import pathlib
+import logging
+import time
+from urllib.parse import urljoin
 
+from iso8601 import iso8601
+from crawlers.lib.platforms.i_crawler import IResult, ICrawler
+
+logger = logging.getLogger(__name__)
 
 
 def get_query():
     current_folder_path = pathlib.Path(__file__).parent.absolute()
-    with open(current_folder_path.joinpath('query_repos.graphql')) as f:
+    with open(current_folder_path.joinpath('query_repos_search.graphql')) as f:
         query = f.read()
     return query
 
@@ -40,7 +29,7 @@ def get_query():
 query = get_query()
 
 
-class GitHubResult(GenericResult):
+class GitHubResult(IResult):
     """
     """
 
@@ -75,11 +64,10 @@ class GitHubResult(GenericResult):
                          license=license)
 
 
-class GitHubIndexerV4(GenericIndexer):
+class GitHubV4Crawler(ICrawler):
     """
     """
-
-    name = 'github_v4'
+    name = 'github_v4_legacy'
 
     def __init__(self, id, base_url, state=None, auth_data=None, **kwargs):
         super().__init__(
@@ -104,7 +92,6 @@ class GitHubIndexerV4(GenericIndexer):
               "resetAt": "2020-11-29T14:26:15Z"
             },
         """
-        import datetime
         rate_limit = response.json().get('data').get('rateLimit')
         ratelimit_remaining = rate_limit['remaining']
 
@@ -132,7 +119,6 @@ class GitHubIndexerV4(GenericIndexer):
         return variables
 
     def crawl(self, state=None):
-
         # crawl all repos, set timestamp for this run
         # delete all repos with older timestamp (these are deleted)
         # start from beginning :)

@@ -1,15 +1,22 @@
+"""
+Legacy note:
+
+This crawler is not finished and wont be used.
+It needs to run extra requests per repository (+1 per data-point)
+to get the real data, which we dont want to do.
+"""
 import logging
 import time
+import math
 from urllib.parse import urljoin
 
-import requests
 from iso8601 import iso8601
-from lib.platforms._generic import GenericResult, GenericIndexer
+from crawlers.lib.platforms.i_crawler import IResult, ICrawler
 
 logger = logging.getLogger(__name__)
 
 
-class GitHubResult(GenericResult):
+class GitHubRESTResult(IResult):
     """
     {
     "id": 1296269,
@@ -127,6 +134,7 @@ class GitHubResult(GenericResult):
     }
   }
     """
+
     def __init__(self, platform_id, search_result_item):
         name = search_result_item['name']
         owner = search_result_item.get('owner', {})
@@ -157,7 +165,7 @@ class GitHubResult(GenericResult):
                          license=license)
 
 
-class GitHubIndexer(GenericIndexer):
+class GitHubRESTCrawler(ICrawler):
     """
     Accept-Ranges: bytes
     Content-Length: 32867
@@ -186,7 +194,7 @@ class GitHubIndexer(GenericIndexer):
     x-xss-protection: 1; mode=block
     """
 
-    name = 'github'
+    name = 'github_legacy'
 
     def __init__(self, id, base_url, state=None, auth_data=None, **kwargs):
         super().__init__(
@@ -198,9 +206,8 @@ class GitHubIndexer(GenericIndexer):
         )
         self.request_url = urljoin(self.base_url, self.path)
         if auth_data:
-            self.requests.auth = (
-                auth_data['client_id'],
-                auth_data['client_secret'])
+            self.requests.headers.update(
+                {"Authorization": f"Bearer {auth_data['access_token']}"})
 
     def request(self, url, params=None):
         response = False
@@ -231,46 +238,39 @@ class GitHubIndexer(GenericIndexer):
                 f'{self} rate limiting: {ratelimit_remaining} requests remaining, sleeping {reset_in}s')
             time.sleep(reset_in)
 
-    def get_user_repos(self, user_repos_url):
-        while user_repos_url:
-            response = self.request(user_repos_url, params=dict(per_page=100))
-            results = [GitHubResult(self._id, item)
-                       for item in response.json()]
+    @staticmethod
+    def get_next_link(response) -> (str, int):
+        link = None
+        index = None
+        pagination = response.headers.get('link', '')
+        if 'next' in pagination:
+            # should contain the following:
+            # <https://api.github.com/repositories?since=1531>; rel="next", <https://api.github.com/repositories{?since}>; rel="first"
+            link = pagination.split(">")[0][1:]
+            index = int(link.split("since=")[1].split("&")[0])
+        return link, index
 
-            yield results
-
-            self.handle_ratelimit(response)
-            header_next = response.links.get('next', {})
-            user_repos_url = header_next.get('url', False)
+    def init_state(self, state=None):
+        if not state:
+            state = {}
+        state['start_at'] = state.get('start_at', 0)
+        state['end_at'] = state.get('end_at', math.inf)
+        state['current'] = state.get('current', 0)
+        state['next_link'] = state.get('next_link', urljoin(self.base_url, f'/repositories?since={state["start_at"]}'))
+        return state
 
     def crawl(self, state=None):
-        user_url = False
-        if state:
-            user_url = state.get('user_url', False)
-            if not user_url:
-                logger.warning('{self} broken state, defaulting to start')
+        state = self.init_state(state)
+        while state["next_link"]:
+            time.sleep(.01)  # default self-throttling
+            repo_response = self.request(state["next_link"])
+            self.handle_ratelimit(repo_response)  # sleep when needed
 
-        if not user_url:
-            user_url = '/users'
+            results = [GitHubRESTResult(self._id, item)
+                       for item in repo_response.json()]
+            logger.debug(f'{self} {len(results)} repos in page')
+            state["next_link"], state["current"] = self.get_next_link(repo_response)
+            if len(results) == 0 or state["current"] >= state["end_at"]:
+                state["next_link"] = None  # finished
 
-        while user_url:
-            user_response = self.request(urljoin(self.base_url, user_url))
-            self.handle_ratelimit(user_response)
-
-            users_page = user_response.json()
-            for user in users_page:
-                user_repos = []
-                for repo_page in self.get_user_repos(user['repos_url']):
-                    logger.debug(f'{self} {len(repo_page)} repos in page')
-                    user_repos += repo_page
-                state = {'user_url': user_url}
-                yield True, user_repos, state
-
-            # https://stackoverflow.com/questions/32312758/python-requests-link-headers
-            user_header_next = user_response.links.get('next', {})
-            user_url = user_header_next.get('url', False)
-            if not user_url:
-                # not hit rate limit, and we dont have a next url - finished!
-                # reset state
-                yield True, [], None
-            time.sleep(.01)
+            yield True, results, state

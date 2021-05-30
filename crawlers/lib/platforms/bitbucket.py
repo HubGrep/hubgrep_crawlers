@@ -4,12 +4,12 @@ from urllib.parse import urljoin
 
 import requests
 from iso8601 import iso8601
-from lib.platforms._generic import GenericResult, GenericIndexer
+from crawlers.lib.platforms.i_crawler import IResult, ICrawler
 
 logger = logging.getLogger(__name__)
 
 
-class BitBucketResult(GenericResult):
+class BitBucketResult(IResult):
     """{
             "created_on": "2011-07-08T08:59:53.298617+00:00",
             "description": "",
@@ -162,7 +162,7 @@ class BitBucketResult(GenericResult):
                          license=license)
 
 
-class BitBucketIndexer(GenericIndexer):
+class BitBucketCrawler(ICrawler):
     name = 'bitbucket'
 
     # https://developer.atlassian.com/bitbucket/api/2/reference/resource/repositories

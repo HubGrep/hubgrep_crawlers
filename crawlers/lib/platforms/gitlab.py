@@ -4,12 +4,12 @@ from urllib.parse import urljoin
 
 import requests
 from iso8601 import iso8601
-from lib.platforms._generic import GenericResult, GenericIndexer
+from crawlers.lib.platforms.i_crawler import IResult, ICrawler
 
 logger = logging.getLogger(__name__)
 
 
-class GitLabResult(GenericResult):
+class GitLabResult(IResult):
     """
     {'id': 1241825,
      'description': 'Pacote LaTeXe para produção de monografias, dissertações e teses',
@@ -60,7 +60,7 @@ class GitLabResult(GenericResult):
                          license=license)
 
 
-class GitLabIndexer(GenericIndexer):
+class GitLabCrawler(ICrawler):
     name = 'gitlab'
 
     # https://docs.gitlab.com/ee/api/projects.html

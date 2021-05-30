@@ -1,0 +1,50 @@
+query inputArray($ids: [ID!]!) {
+  rateLimit {
+    cost
+    remaining
+    resetAt
+  }
+  nodes(ids: $ids) {
+    ... on Repository {
+      id
+      name
+      nameWithOwner
+      homepageUrl
+      url
+      createdAt
+      updatedAt
+      pushedAt
+      shortDescriptionHTML
+      description
+      isArchived
+      isPrivate
+      isFork
+      isEmpty
+      isDisabled
+      isLocked
+      isTemplate
+      stargazerCount
+      forkCount
+      diskUsage
+      owner {
+        login
+        id
+        url
+      }
+      repositoryTopics(first: 100) {
+        nodes {
+          topic {
+            name
+          }
+        }
+      }
+      primaryLanguage {
+        name
+      }
+      licenseInfo {
+        name
+        nickname
+      }
+    }
+  }
+}

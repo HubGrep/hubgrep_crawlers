@@ -1,12 +1,11 @@
+""" All crawlers share this interface to work with our crawler API/CLI. """
 import requests
-from datetime import datetime
-from urllib.parse import urljoin
 
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 
 
-class GenericResult:
+class IResult:
     def __init__(
             self,
             name,
@@ -35,7 +34,7 @@ class GenericResult:
         return f'<{self.owner_name} / {self.name} @ {self.platform_id}>'
 
 
-class GenericIndexer:
+class ICrawler:
     def __init__(self, _id, base_url, path, state, auth_data=None):
         self._id = _id
         self.base_url = base_url
@@ -51,3 +50,6 @@ class GenericIndexer:
 
     def __str__(self):
         return f'<{self.name}@{self.base_url}>'
+
+    def crawl(self):
+        return NotImplementedError
