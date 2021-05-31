@@ -11,10 +11,10 @@ logger = logging.getLogger(__name__)
 
 class DB:
     def __init__(self):
-        self.user = os.environ['HUBGREP_CRAWLERS_POSTGRES_USER']
         self.password = os.environ['HUBGREP_CRAWLERS_POSTGRES_PASSWORD']
-        self.db_name = os.environ['HUBGREP_CRAWLERS_POSTGRES_DB']
         self.db_host = os.environ['HUBGREP_CRAWLERS_POSTGRES_HOST']
+        self.db_name = os.environ['HUBGREP_CRAWLERS_POSTGRES_DB']
+        self.user = os.environ['HUBGREP_CRAWLERS_POSTGRES_USER']
 
     def create(self):
         db_name = self.db_name
