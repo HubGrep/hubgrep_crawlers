@@ -8,12 +8,12 @@ from typing import List, Tuple
 from urllib.parse import urljoin
 from iso8601 import iso8601
 
-from crawlers.lib.platforms.i_crawler import IResult, ICrawler
+from crawlers.lib.platforms.i_crawler import ICrawler
 
 logger = logging.getLogger(__name__)
 
 
-class GitHubRESTResult(IResult):
+class GitHubRESTResult:
     """
     {
     "id": 1296269,
@@ -131,7 +131,7 @@ class GitHubRESTResult(IResult):
     }
   }
     """
-    def __init__(self, platform_id, search_result_item):
+    def __init__(self, search_result_item):
         name = search_result_item['name']
         owner = search_result_item.get('owner', {})
         if owner:
@@ -150,8 +150,7 @@ class GitHubRESTResult(IResult):
 
         html_url = search_result_item['html_url']
 
-        super().__init__(platform_id=platform_id,
-                         name=name,
+        super().__init__(name=name,
                          description=description,
                          html_url=html_url,
                          owner_name=owner_name,
@@ -192,10 +191,8 @@ class GitHubRESTCrawler(ICrawler):
 
     name = 'github_rest'
 
-    def __init__(self, id, type, base_url, state=None, auth_data=None, user_agent=None, **kwargs):
+    def __init__(self, base_url, state=None, auth_data=None, user_agent=None, **kwargs):
         super().__init__(
-            _id=id,
-            type=type,
             base_url=base_url,
             path='',
             state=state,
@@ -240,7 +237,7 @@ class GitHubRESTCrawler(ICrawler):
     def get_user_repos(self, user_repos_url):
         while user_repos_url:
             response = self.request(user_repos_url, params=dict(per_page=100))
-            results = [GitHubRESTResult(self._id, item)
+            results = [GitHubRESTResult(item)
                        for item in response.json()]
 
             yield results

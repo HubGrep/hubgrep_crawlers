@@ -4,12 +4,12 @@ from typing import List, Tuple
 from urllib.parse import urljoin
 
 from iso8601 import iso8601
-from crawlers.lib.platforms.i_crawler import IResult, ICrawler
+from crawlers.lib.platforms.i_crawler import ICrawler
 
 logger = logging.getLogger(__name__)
 
 
-class GiteaResult(IResult):
+class GiteaResult:
     """
     {'id': 2,
     'owner': {'id': 5,
@@ -43,7 +43,7 @@ class GiteaResult(IResult):
                     'pull': True}}
     """
 
-    def __init__(self, platform_id, search_result_item):
+    def __init__(self, search_result_item):
         name = search_result_item['name']
         owner_name = search_result_item['owner']['login']
         description = search_result_item['description'] or '?'
@@ -55,8 +55,7 @@ class GiteaResult(IResult):
 
         html_url = search_result_item['html_url']
 
-        super().__init__(platform_id=platform_id,
-                         name=name,
+        super().__init__(name=name,
                          description=description,
                          html_url=html_url,
                          owner_name=owner_name,
@@ -69,10 +68,8 @@ class GiteaResult(IResult):
 class GiteaCrawler(ICrawler):
     name = 'gitea'
 
-    def __init__(self, id, type, base_url, state=None, auth_data=None, user_agent=None, **kwargs):
+    def __init__(self, base_url, state=None, auth_data=None, user_agent=None, **kwargs):
         super().__init__(
-            _id=id,
-            type=type,
             base_url=base_url,
             path='api/v1/repos/search',
             state=state,
@@ -101,7 +98,7 @@ class GiteaCrawler(ICrawler):
                 logger.error(e)
                 return False, [], {}
             result = response.json()
-            results = [GiteaResult(self._id, item)
+            results = [GiteaResult(item)
                        for item in result['data']]
             state = {'page': page}
             yield True, results, state

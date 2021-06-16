@@ -6,9 +6,6 @@ APP_ENV_DEVELOPMENT = "development"
 APP_ENV_PRODUCTION = "production"
 APP_ENV_TESTING = "testing"
 
-# threading
-THREAD_CRAWLER_NAME = "auto_crawler"
-
 # crawler generic
 CRAWLER_IS_RUNNING_ENV_KEY = "crawler_is_running"
 

@@ -1,8 +1,9 @@
 """
-Main crawler process, running all requested crawlers synchronously.
+Main crawler processing.
 """
 import logging
 import requests
+import time
 import os
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -11,65 +12,46 @@ from typing import List, Generator
 from flask import current_app
 
 from crawlers.constants import CRAWLER_IS_RUNNING_ENV_KEY
-from crawlers.lib.db import DB
-from crawlers.lib.platforms.i_crawler import ICrawler, IResult
+from crawlers.lib.platforms.i_crawler import ICrawler
 from crawlers.lib.platforms import platforms
-
-db = DB()
 
 logger = logging.getLogger(__name__)
 
 
-def crawl(platforms: List[ICrawler], store_state=False, store_results=False) -> Generator[List[IResult], None, None]:
+def crawl(platform: ICrawler) -> Generator[List[dict], None, None]:
     """
     Run crawlers yielding results as it goes.
     Crawlers are restricted to ranges, or blocks, after which they will stop.
-    Avoid store_state if there are multiple contexts running in parallel, as they update the same object.
 
-    :param platforms: list of platforms to be crawled
-    :param store_state: keep track of state in database
-    :param store_results: store results in database
+    :param platform: which platform to crawl, with what credentials
     """
-    logger.info(f'crawling platforms: [{", ".join(str(p) for p in platforms)}]')
+    logger.info(f'crawling platform: {platform} - initial state: {platform.state}')
+    for success, result_chunk, state in platform.crawl(state=platform.state):
+        if success:
+            logger.info(f'got {len(result_chunk)} results from {platform}')
 
-    for platform in platforms:
-        logger.info(f'starting {platform}')
-        for success, result_chunk, state in platform.crawl(state=platform.state):
-            if success:
-                logger.info(f'got {len(result_chunk)} results from {platform}')
-                if store_results:
-                    db.repo_add_or_update(result_chunk)
-                else:
-                    yield result_chunk
-                    return
+            yield result_chunk
+        else:
+            # TODO deal with failures - what are they?
+            pass
 
-                if store_state:
-                    db.platform_update_state(platform._id, state)
-            else:
-                # TODO deal with failures - what are they?
-                pass
-        if store_state:
-            db.platform_update_state(platform._id, None)
-    logger.info(f'finished {", ".join(str(p) for p in platforms)}')
+    logger.info(f'crawling complete: {platform} - final state: {platform.state}')
 
 
-def _run_job(job_data: dict) -> List[IResult]:
+def _run_job(job_data: dict) -> List[dict]:
     # platform_key, api_url, headerstw
-
     platform_key = "github"  # TODO indexer should give us -> data["platform_key"]
     api_url = "https://api.github.com"  # job_data["api_url"]
     api_auth_data = {"access_token": "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"}  # job_data["headers"]
-    platform = platforms[platform_key](id=None,
-                                       type=platform_key,
-                                       base_url=api_url,
+    platform = platforms[platform_key](base_url=api_url,
                                        state=platforms[platform_key].state_from_job_data(job_data),
                                        auth_data=api_auth_data,
                                        user_agent=current_app.config["CRAWLER_USER_AGENT"])
     repos = []
-    for chunk in crawl([platform]):
+    started_at = time.time()
+    for chunk in crawl(platform):
         repos += chunk
-    import json
-    print("REPOS", len(repos), json.dumps(repos[0]))
+    logger.debug(f'job yielded {len(repos)} results total, and took {time.time() - started_at}s')
     return repos
 
 
