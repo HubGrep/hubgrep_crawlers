@@ -1,13 +1,12 @@
 import logging
 import time
+from typing import List, Tuple
 from urllib.parse import urljoin
 
 from iso8601 import iso8601
 from crawlers.lib.platforms.i_crawler import IResult, ICrawler
 
 logger = logging.getLogger(__name__)
-
-# https://developer.github.com/v3/search/
 
 
 class GiteaResult(IResult):
@@ -70,17 +69,19 @@ class GiteaResult(IResult):
 class GiteaCrawler(ICrawler):
     name = 'gitea'
 
-    def __init__(self, id, base_url, state=None, auth_data=None, **kwargs):
+    def __init__(self, id, type, base_url, state=None, auth_data=None, user_agent=None, **kwargs):
         super().__init__(
             _id=id,
+            type=type,
             base_url=base_url,
             path='api/v1/repos/search',
             state=state,
-            auth_data=auth_data
+            auth_data=auth_data,
+            user_agent=user_agent
         )
         self.request_url = urljoin(self.base_url, self.path)
 
-    def crawl(self, state=None):
+    def crawl(self, state: dict = None) -> Tuple[bool, List[GiteaResult], dict]:
         if not state:
             page = 1
         else:

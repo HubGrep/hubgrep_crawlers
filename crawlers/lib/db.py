@@ -4,7 +4,7 @@ import psycopg2
 import logging
 from psycopg2.extras import Json, RealDictCursor
 
-from crawlers.lib import platforms
+from crawlers.lib.platforms import platforms
 
 logger = logging.getLogger(__name__)
 

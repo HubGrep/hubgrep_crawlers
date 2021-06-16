@@ -8,9 +8,10 @@ to get the real data, which we dont want to do.
 import logging
 import time
 import math
+from typing import List, Tuple
 from urllib.parse import urljoin
-
 from iso8601 import iso8601
+
 from crawlers.lib.platforms.i_crawler import IResult, ICrawler
 
 logger = logging.getLogger(__name__)
@@ -194,15 +195,17 @@ class GitHubRESTCrawler(ICrawler):
     x-xss-protection: 1; mode=block
     """
 
-    name = 'github_legacy'
+    name = 'github_rest_legacy'
 
-    def __init__(self, id, base_url, state=None, auth_data=None, **kwargs):
+    def __init__(self, id, type, base_url, state=None, auth_data=None, user_agent=None, **kwargs):
         super().__init__(
             _id=id,
+            type=type,
             base_url=base_url,
             path='',
             state=state,
-            auth_data=auth_data
+            auth_data=auth_data,
+            user_agent=user_agent
         )
         self.request_url = urljoin(self.base_url, self.path)
         if auth_data:
@@ -250,7 +253,7 @@ class GitHubRESTCrawler(ICrawler):
             index = int(link.split("since=")[1].split("&")[0])
         return link, index
 
-    def init_state(self, state=None):
+    def init_state(self, state: dict = None):
         if not state:
             state = {}
         state['start_at'] = state.get('start_at', 0)
@@ -259,7 +262,7 @@ class GitHubRESTCrawler(ICrawler):
         state['next_link'] = state.get('next_link', urljoin(self.base_url, f'/repositories?since={state["start_at"]}'))
         return state
 
-    def crawl(self, state=None):
+    def crawl(self, state: dict = None) -> Tuple[bool, List[GitHubRESTResult], dict]:
         state = self.init_state(state)
         while state["next_link"]:
             time.sleep(.01)  # default self-throttling

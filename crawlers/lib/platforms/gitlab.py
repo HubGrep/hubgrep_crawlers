@@ -1,8 +1,9 @@
 import logging
 import time
+import requests
+from typing import List, Tuple
 from urllib.parse import urljoin
 
-import requests
 from iso8601 import iso8601
 from crawlers.lib.platforms.i_crawler import IResult, ICrawler
 
@@ -37,6 +38,7 @@ class GitLabResult(IResult):
                    'avatar_url': 'https://secure.gravatar.com/avatar/ec3a8f5183465a232283493f3de0a80d?s=80&d=identicon',
                    'web_url': 'https://gitlab.com/dedekindbr'}}
     """
+
     def __init__(self, platform_id, search_result_item):
         name = search_result_item['name']
         owner_name = search_result_item['namespace']['path']
@@ -65,22 +67,24 @@ class GitLabCrawler(ICrawler):
 
     # https://docs.gitlab.com/ee/api/projects.html
 
-    def __init__(self, id, base_url, state=None, auth_data=None, **kwargs):
+    def __init__(self, id, type, base_url, state=None, auth_data=None, user_agent=None, **kwargs):
         super().__init__(
             _id=id,
+            type=type,
             base_url=base_url,
             path='/api/v4/projects',
             state=state,
-            auth_data=auth_data
+            auth_data=auth_data,
+            user_agent=user_agent
         )
         self.request_url = urljoin(self.base_url, self.path)
 
-    def crawl(self, state=None):
+    def crawl(self, state: dict = None) -> Tuple[bool, List[GitLabResult], dict]:
         url = False
         if state:
             url = state.get('url', False)
             if not url:
-                logger.warning('{self} broken state, defaulting to start')
+                logger.warning(f'{self} broken state, defaulting to start')
 
         if not url:
             url = '/api/v4/projects?pagination=keyset&per_page=100&order_by=id&sort=desc'

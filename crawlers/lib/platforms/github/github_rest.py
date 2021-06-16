@@ -4,9 +4,10 @@ Gets repositories connected to users.
 """
 import logging
 import time
+from typing import List, Tuple
 from urllib.parse import urljoin
-
 from iso8601 import iso8601
+
 from crawlers.lib.platforms.i_crawler import IResult, ICrawler
 
 logger = logging.getLogger(__name__)
@@ -189,15 +190,17 @@ class GitHubRESTCrawler(ICrawler):
     x-xss-protection: 1; mode=block
     """
 
-    name = 'github-rest'
+    name = 'github_rest'
 
-    def __init__(self, id, base_url, state=None, auth_data=None, **kwargs):
+    def __init__(self, id, type, base_url, state=None, auth_data=None, user_agent=None, **kwargs):
         super().__init__(
             _id=id,
+            type=type,
             base_url=base_url,
             path='',
             state=state,
-            auth_data=auth_data
+            auth_data=auth_data,
+            user_agent=user_agent
         )
         self.request_url = urljoin(self.base_url, self.path)
         if auth_data:
@@ -246,7 +249,7 @@ class GitHubRESTCrawler(ICrawler):
             header_next = response.links.get('next', {})
             user_repos_url = header_next.get('url', False)
 
-    def crawl(self, state=None):
+    def crawl(self, state=None) -> Tuple[bool, List[GitHubRESTResult], dict]:
         user_url = False
         if state:
             user_url = state.get('user_url', False)

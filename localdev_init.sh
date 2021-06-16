@@ -1,13 +1,17 @@
 #!/bin/bash
+# this is a localdev script for populating the DB with a working set of platforms
+# - NOT for production or auto crawling!
 
 set -a; source .env; set +a
 
-python crawler.py db-create
-python crawler.py db-init
+flask cli db-create
+flask cli db-init
 
-python crawler.py add-platform github 'https://api.github.com' --auth_data "{\"access_token\": \"$GITHUB_TOKEN\"}"
+flask cli add-platform github 'https://api.github.com' --auth_data "{\"access_token\": \"$GITHUB_TOKEN\"}"
 
 : '
+python crawler.py add-platform gitlab 'https://gitlab.com/'
+
 python crawler.py add-platform gitea 'https://codeberg.org/'
 python crawler.py add-platform gitea 'https://git.spip.net/'
 python crawler.py add-platform gitea 'https://gitea.com/'
@@ -25,12 +29,6 @@ python crawler.py add-platform gitea 'https://gitea.anfuchs.de/'
 python crawler.py add-platform gitea 'https://git.sablun.org/'
 python crawler.py add-platform gitea 'https://git.jcg.re/'
 
-python crawler.py add-platform github 'https://api.github.com/' '{"client_id": CLIENT_ID, "client_secret": CLIENT_SECRET}'
-python crawler.py add-platform github_v4 'https://api.github.com/' --auth_data "{\"access_token\": \"$GITHUB_TOKEN\"}"
-
-python crawler.py add-platform gitlab 'https://gitlab.com/'
-
-python crawler.py add-platform bitbucket 'https://api.bitbucket.org/' '{"client_id": CLIENT_ID, "client_secret": CLIENT_SECRET}'
 '
 
 

@@ -1,13 +1,15 @@
 """
-HubGrep Flask-app initialization script
+HubGrep crawlers Flask-app initialization script
 """
 import logging
 import os
 from werkzeug.serving import WSGIRequestHandler
 from flask import Flask
 
-from crawlers.constants import APP_ENV_BUILD, APP_ENV_DEVELOPMENT, APP_ENV_PRODUCTION, APP_ENV_TESTING
+from crawlers.constants import APP_ENV_BUILD, APP_ENV_DEVELOPMENT, APP_ENV_PRODUCTION, APP_ENV_TESTING, \
+    THREAD_CRAWLER_NAME
 from crawlers.lib.init_logging import init_logging
+from crawlers.lib.crawl import run_crawler
 from crawlers.api_blueprint import api_bp
 from crawlers.cli_blueprint import cli_bp
 
@@ -27,8 +29,6 @@ def create_app():
         APP_ENV_PRODUCTION: "crawlers.config.ProductionConfig",
         APP_ENV_TESTING: "crawlers.config.TestingConfig",
     }
-
-
 
     app_env = os.environ.get("APP_ENV", APP_ENV_DEVELOPMENT)
     app.config.from_object(config_mapping[app_env])

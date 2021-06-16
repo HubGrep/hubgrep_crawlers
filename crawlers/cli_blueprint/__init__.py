@@ -1,6 +1,10 @@
 """
 CLI tool for crawler and database interactions.
+
+Note that crawling via the CLI will store results in the database to make it
+easier to test and reason about the crawlers from a localdev perspective.
 """
+import os
 import sys
 import json
 import click
@@ -8,8 +12,9 @@ import logging
 from flask import Blueprint
 from dotenv import load_dotenv
 
+from crawlers.constants import CRAWLER_IS_RUNNING_ENV_KEY
 from crawlers.lib.db import DB
-from crawlers.lib.crawl import crawl
+from crawlers.lib.crawl import crawl as _crawl, run_crawler
 from crawlers.lib.platforms import platforms
 from crawlers.lib.util.stream_array import StreamArray
 
@@ -77,14 +82,26 @@ def del_platform(platform_type, base_url):
         db.platform_delete(platform_type, base_url)
 
 
-@cli_bp.cli.command(help="Start collecting and storing repo data.")
+@cli_bp.cli.command(help="For localdev - collect and store repo data in local db.")
 @click.option('--platform-base-url', default=None)
 @click.option('--platform', type=click.Choice(list(platforms.keys()) + [None]))
 def crawl(platform_base_url, platform):
     all_platforms = db.platform_get_all(
         platform=platform,
         base_url=platform_base_url)
-    crawl(all_platforms)
+    print(all_platforms)
+    _crawl(platforms=all_platforms, store_state=True, store_results=True)
+
+
+@cli_bp.cli.command(
+    help=f'Initiate automatic crawler. Looks for job_url @ env-var: HUBGREP_CRAWLERS_JOB_URL.')
+def crawl_start():
+    run_crawler()
+
+
+@cli_bp.cli.command(help="Stop automatic crawlers.")
+def crawl_stop():
+    os.environ[CRAWLER_IS_RUNNING_ENV_KEY] = "0"
 
 
 @cli_bp.cli.command()

@@ -12,11 +12,13 @@ services:
     volumes:
       - ./:/var/task
 
+    env_file: .env
+
     restart: ${RESTART}
 
     # uplink port to host
     ports:
-      - 8080:8080
+      - 8080-8999:8080
 
     command: >
       bash -ic " \

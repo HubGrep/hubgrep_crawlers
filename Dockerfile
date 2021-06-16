@@ -10,5 +10,3 @@ RUN echo 'if [ ! -d "env_docker" ]; then' >> /root/.bashrc && \
     echo 'fi' >> /root/.bashrc && \
     echo '' >> /root/.bashrc && \
     echo 'source env_docker/bin/activate' >> /root/.bashrc
-
-

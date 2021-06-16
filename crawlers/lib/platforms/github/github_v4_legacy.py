@@ -1,19 +1,19 @@
 """
 Legacy note:
 
-- there is a limit at 1000 results for the search api (both rest and graphql)
+There is a limit at 1000 results for the search api (both rest and graphql)
 https://stackoverflow.com/questions/48371313/github-api-pagination-limit
 https://developer.github.com/v3/search/#about-the-search-api
 
-- listing users does not work as it does in rest
-
+This version is not usable for us as we cannot get around this limit!
 """
 import pathlib
 import logging
 import time
+from typing import List, Tuple
+from iso8601 import iso8601
 from urllib.parse import urljoin
 
-from iso8601 import iso8601
 from crawlers.lib.platforms.i_crawler import IResult, ICrawler
 
 logger = logging.getLogger(__name__)
@@ -69,13 +69,15 @@ class GitHubV4Crawler(ICrawler):
     """
     name = 'github_v4_legacy'
 
-    def __init__(self, id, base_url, state=None, auth_data=None, **kwargs):
+    def __init__(self, id, type, base_url, state=None, auth_data=None, user_agent=None, **kwargs):
         super().__init__(
             _id=id,
+            type=type,
             base_url=base_url,
             path='graphql',
             state=state,
-            auth_data=auth_data
+            auth_data=auth_data,
+            user_agent=user_agent
         )
         self.request_url = urljoin(self.base_url, self.path)
         if auth_data:
@@ -118,7 +120,7 @@ class GitHubV4Crawler(ICrawler):
         }
         return variables
 
-    def crawl(self, state=None):
+    def crawl(self, state: dict = None) -> Tuple[bool, List[GitHubResult], dict]:
         # crawl all repos, set timestamp for this run
         # delete all repos with older timestamp (these are deleted)
         # start from beginning :)
