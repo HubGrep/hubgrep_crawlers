@@ -85,5 +85,3 @@ def run_crawler():
                     url=job_data["callback_url"],
                     json=repos
                 )
-
-        return
