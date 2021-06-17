@@ -25,7 +25,7 @@ def crawl(platform: ICrawler) -> Generator[List[dict], None, None]:
 
     :param platform: which platform to crawl, with what credentials
     """
-    logger.info(f'crawling platform: {platform} - initial state: {platform.state}')
+    logger.info(f'crawling platform: {platform.name} - initial state: {platform.state}')
     for success, result_chunk, state in platform.crawl(state=platform.state):
         if success:
             logger.info(f'got {len(result_chunk)} results from {platform}')
@@ -34,24 +34,23 @@ def crawl(platform: ICrawler) -> Generator[List[dict], None, None]:
         else:
             # TODO deal with failures - what are they?
             pass
-
-    logger.info(f'crawling complete: {platform} - final state: {platform.state}')
+    logger.info(f'crawling complete: {platform.name} - final state: {platform.state}')
 
 
 def _run_job(job_data: dict) -> List[dict]:
-    # platform_key, api_url, headerstw
-    platform_key = "github"  # TODO indexer should give us -> data["platform_key"]
-    api_url = "https://api.github.com"  # job_data["api_url"]
-    api_auth_data = {"access_token": "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"}  # job_data["headers"]
-    platform = platforms[platform_key](base_url=api_url,
-                                       state=platforms[platform_key].state_from_job_data(job_data),
-                                       auth_data=api_auth_data,
-                                       user_agent=current_app.config["CRAWLER_USER_AGENT"])
+    platform_data = job_data["crawler"]
+    platform_type = platform_data["type"]
+    api_url = platform_data["api_url"]
+    api_auth_data = platform_data["request_headers"]
+    platform = platforms[platform_type](base_url=api_url,
+                                        state=platforms[platform_type].state_from_job_data(job_data),
+                                        auth_data=api_auth_data,
+                                        user_agent=current_app.config["CRAWLER_USER_AGENT"])
     repos = []
     started_at = time.time()
     for chunk in crawl(platform):
         repos += chunk
-    logger.debug(f'job yielded {len(repos)} results total, and took {time.time() - started_at}s')
+    logger.debug(f'{platform_type} - job yielded {len(repos)} results total, and took {time.time() - started_at}s')
     return repos
 
 
