@@ -104,14 +104,12 @@ class GitHubV4Crawler(ICrawler):
     @staticmethod
     def get_ids(state: dict) -> list:
         """ Produce a subset of repository IDs from a larger known set, or a exploratory range within query max."""
-        # we use known IDs when we have them, otherwise explore incrementally
         i = state['i'] * GITHUB_QUERY_MAX
+        # we use known IDs when we have them, otherwise explore incrementally
         if len(state[JOB_IDS]) > 0:
             indexes = state[JOB_IDS][i:i + GITHUB_QUERY_MAX]
-            if i > len(state[JOB_IDS]):
-                state['current'] = state[JOB_IDS][i]
-            else:
-                state['current'] = state[JOB_IDS][-1]
+            if len(indexes) > 0:
+                state['current'] = indexes[-1]
         else:
             indexes = range(i, i + GITHUB_QUERY_MAX)
             state['current'] += GITHUB_QUERY_MAX
@@ -140,28 +138,24 @@ class GitHubV4Crawler(ICrawler):
 
     def crawl(self, state: dict = None) -> Tuple[bool, List[dict], dict]:
         """ Run a GraphQL query against GitHubs V4 API. """
+        state = state or self.state
         while self.has_next_crawl(state):
             response = self.requests.post(
-                urljoin(self.base_url, self.path),
+                url=self.request_url,
                 json=dict(query=self.query, variables=self.get_graphql_variables(state))
             )
-            try:
-                repos = response.json()['data']['nodes']
-                if len(state[JOB_IDS]) == 0:
-                    # When we explore, we expect lots of non-public IDs, and we filter them out here.
-                    # Conversely when we have known IDs, we want to know which ones are deleted/no longer public
-                    # and we want to keep them so we can match them by the order they arrive in.
-                    repos = self.remove_invalid_nodes(repos)
+            repos = response.json()['data']['nodes']
+            if len(state[JOB_IDS]) == 0:
+                # When we explore, we expect lots of non-public IDs, and we filter them out here.
+                # Conversely, when we have known IDs, we want to know which ones are deleted/no longer public
+                # and we want to keep them so we can match them by the order they arrive in.
+                repos = self.remove_invalid_nodes(repos)
 
-                if len(repos) == 0:
-                    state['empty_page_cnt'] += 1
+            if len(repos) == 0:
+                state['empty_page_cnt'] += 1
 
-                yield True, repos, state
-                self.handle_ratelimit(response)
-
-            except Exception as e:
-                logger.error(f'node parsing failed. response was: {response.json()}')
-                raise e
+            yield True, repos, state
+            self.handle_ratelimit(response)
             state = self.set_state(state)  # update state for next round
 
         """

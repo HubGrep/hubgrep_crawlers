@@ -26,7 +26,7 @@ def crawl(platform: ICrawler) -> Generator[List[dict], None, None]:
     :param platform: which platform to crawl, with what credentials
     """
     logger.info(f'crawling platform: {platform.name} - initial state: {platform.state}')
-    for success, result_chunk, state in platform.crawl(state=platform.state):
+    for success, result_chunk, state in platform.crawl(platform.state):
         if success:
             logger.info(f'got {len(result_chunk)} results from {platform}')
 

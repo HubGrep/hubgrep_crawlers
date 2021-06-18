@@ -8,6 +8,7 @@ APP_ENV_TESTING = "testing"
 
 # crawler generic
 CRAWLER_IS_RUNNING_ENV_KEY = "crawler_is_running"
+CRAWLER_DEFAULT_THROTTLE = 0.5  # (seconds) unless an API has other means of throttling, we self-throttle for this
 
 # GitHub v4
 GITHUB_QUERY_MAX = 100
