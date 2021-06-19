@@ -86,8 +86,8 @@ class GiteaCrawler(ICrawler):
         """
         if not state:
             state = {}
-        state['per_page'] = state.get('per_page', 50)
-        state['is_done'] = state.get('per_page', False)
+        state['per_page'] = state.get('per_page', 100)
+        state['is_done'] = state.get('is_done', False)
 
         if not state.get('page', False):
             if state.get(JOB_FROM_ID, False):

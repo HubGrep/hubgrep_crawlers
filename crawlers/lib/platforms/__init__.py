@@ -5,11 +5,10 @@ from crawlers.lib.platforms.gitlab import GitLabCrawler
 from crawlers.lib.platforms.bitbucket import BitBucketCrawler
 from crawlers.lib.platforms.github import GitHubV4Crawler, GitHubRESTCrawler
 
-platforms: Dict[Any, Type[Union[GiteaCrawler, GitLabCrawler, GitHubV4Crawler, GitHubRESTCrawler, BitBucketCrawler]]] = {
+platforms: Dict[str, ICrawler] = {
     GiteaCrawler.name: GiteaCrawler,
     GitLabCrawler.name: GitLabCrawler,
     GitHubV4Crawler.name: GitHubV4Crawler,
     GitHubRESTCrawler.name: GitHubRESTCrawler,
-    BitBucketCrawler.name: BitBucketCrawler
+    BitBucketCrawler.name: BitBucketCrawler,
 }
-
