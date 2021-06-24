@@ -86,12 +86,13 @@ class GiteaCrawler(ICrawler):
         """
         if not state:
             state = {}
-        state['per_page'] = state.get('per_page', 100)
+        state['per_page'] = state.get('per_page', 50)
         state['is_done'] = state.get('is_done', False)
 
         if not state.get('page', False):
             if state.get(JOB_FROM_ID, False):
-                state['page'] = math.ceil(state[JOB_FROM_ID] / state['per_page'])
+                state['page'] = math.ceil(
+                    state[JOB_FROM_ID] / state['per_page'])
             else:
                 state['page'] = 1  # start at the beginning
         else:
@@ -99,7 +100,8 @@ class GiteaCrawler(ICrawler):
 
         if not state.get('page_end', False):
             if state.get(JOB_TO_ID, False):
-                state['page_end'] = math.ceil(state[JOB_TO_ID] / state['per_page'])
+                state['page_end'] = math.ceil(
+                    state[JOB_TO_ID] / state['per_page'])
             else:
                 state['page_end'] = -1  # no limit
 
@@ -107,8 +109,11 @@ class GiteaCrawler(ICrawler):
 
     @staticmethod
     def has_next_crawl(state: dict) -> bool:
-        """ Decide if there are more repositories to crawl for, within current job. """
-        return not state['is_done'] and (state['page_end'] == -1 or state['page'] < state['page_end'])
+        """
+        Decide if there are more repositories to crawl for, within current job.
+        """
+        is_in_page_range = state['page'] <= state['page_end']
+        return not state['is_done'] and (state['page_end'] == -1 or is_in_page_range)
 
     def crawl(self, state: dict = None) -> Tuple[bool, List[GiteaResult], dict]:
         state = state or self.state
