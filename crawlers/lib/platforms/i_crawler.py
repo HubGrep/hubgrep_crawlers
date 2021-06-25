@@ -1,11 +1,13 @@
 """ All crawlers share this interface to work with our crawler API/CLI. """
+import math
+
 import requests
 import time
 from typing import List, Tuple
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 
-from crawlers.constants import CRAWLER_DEFAULT_THROTTLE
+from crawlers.constants import CRAWLER_DEFAULT_THROTTLE, BLOCK_KEY_FROM_ID, BLOCK_KEY_TO_ID
 
 
 class ICrawler:
@@ -28,11 +30,6 @@ class ICrawler:
     def __str__(self):
         return f'<{self.name}@{self.base_url}>'
 
-
-    @staticmethod
-    def state_from_block_data(block_data: dict) -> dict:
-        return block_data  # override this function for specific crawler pre-processing
-
     def handle_ratelimit(self, response):
         time.sleep(CRAWLER_DEFAULT_THROTTLE)
 
@@ -40,4 +37,44 @@ class ICrawler:
         """ :return: success, repos, state """
         raise NotImplementedError
 
+    @staticmethod
+    def state_from_block_data(block_data: dict) -> dict:
+        return block_data  # override this function for specific crawler pre-processing
 
+    @classmethod
+    def set_state(cls, state: dict = None) -> dict:
+        """
+        Init and update state between each query, based on ascending pagination.
+        """
+        if not state:
+            state = {}
+        state['per_page'] = state.get('per_page', 100)
+        state['is_done'] = state.get('is_done', False)
+
+        # set the current page
+        if not state.get('page', False):
+            if state.get(BLOCK_KEY_FROM_ID, False):
+                state['page'] = math.ceil(
+                    state[BLOCK_KEY_FROM_ID] / state['per_page'])
+            else:
+                state['page'] = 1  # start at the beginning
+        else:
+            state['page'] += 1  # set next
+
+        # calculate the last page for this block
+        if not state.get('page_end', False):
+            if state.get(BLOCK_KEY_TO_ID, False):
+                state['page_end'] = math.ceil(
+                    state[BLOCK_KEY_TO_ID] / state['per_page'])  # last inclusive page
+            else:
+                state['page_end'] = -1  # no limit
+
+        return state
+
+    @classmethod
+    def has_next_crawl(cls, state: dict) -> bool:
+        """
+        Decide if there are more repositories to crawl for, within current block.
+        """
+        is_in_page_range = state['page'] <= state['page_end']
+        return not state['is_done'] and (state['page_end'] == -1 or is_in_page_range)

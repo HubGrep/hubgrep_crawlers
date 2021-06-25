@@ -10,8 +10,77 @@ from crawlers.lib.platforms.i_crawler import ICrawler
 logger = logging.getLogger(__name__)
 
 
-class BitBucketResult:
-    """{
+class BitBucketCrawler(ICrawler):
+    name = 'bitbucket'
+
+    # https://developer.atlassian.com/bitbucket/api/2/reference/resource/repositories
+
+    def __init__(self, base_url, state=None, auth_data=None, user_agent=None, **kwargs):
+        super().__init__(
+            base_url=base_url,
+            path='',
+            state=state,
+            auth_data=auth_data,
+            user_agent=user_agent
+        )
+        self.access_token = None
+        self.token_expites_at = 0
+        self.refresh_token = None
+        self.client_id = auth_data.get('client_id')
+        self.client_secret = auth_data.get('client_secret')
+        self.request_url = urljoin(self.base_url, self.path)
+
+    def request(self, url):
+        if not self.access_token or self.token_expites_at < time.time():
+            response = self.requests.post(
+                urljoin('https://bitbucket.org', 'site/oauth2/access_token'),
+                data=dict(grant_type='client_credentials'),
+                auth=(self.client_id, self.client_secret)
+            )
+            data = response.json()
+            self.access_token = data['access_token']
+            self.token_expites_at = time.time() + int(data['expires_in'])
+            self.refresh_token = data['refresh_token']
+            self.requests.headers["Authorization"] = f"Bearer {self.access_token}"
+
+        return self.requests.get(url)
+
+    def crawl(self, state: dict = None) -> Tuple[bool, List[dict], dict]:
+        """ :return: success, repos, state """
+        url = False
+        if state:
+            url = state.get('url', False)
+            if not url:
+                logger.warning('{self} broken state, defaulting to start')
+
+        if not url:
+            url = '/2.0/repositories/?pagelen=100&sort=-created_on'
+
+        while url:
+            try:
+                response = self.request(urljoin(self.base_url, url))
+                response.raise_for_status()
+            except requests.exceptions.HTTPError as e:
+                logger.error(e)
+                logger.error(e.response.reason)
+                logger.error(e.response.text)
+                return False, [], {}
+
+            response_json = response.json()
+            repos = response_json['values']
+            state = {'url': url}
+            yield True, repos, state
+
+            # https://stackoverflow.com/questions/32312758/python-requests-link-headers
+            url = response_json.get('next', False)
+            if not url:
+                # not hit rate limit, and we dont have a next url - finished!
+                # reset state
+                yield True, [], None
+            time.sleep(.1)
+
+        """ expected Bitbucket result
+        {
             "created_on": "2011-07-08T08:59:53.298617+00:00",
             "description": "",
             "fork_policy": "allow_forks",
@@ -132,101 +201,5 @@ class BitBucketResult:
                 "type": "workspace",
                 "uuid": "{c040300f-f69e-4a65-87a6-5a8f3ef1bbf1}"
             }
-        },
-    """
-
-    def __init__(self, search_result_item):
-        name = search_result_item['name']
-
-        owner_name = search_result_item['owner'].get('nickname', False)
-        if not owner_name:
-            owner_name = search_result_item['owner'].get('username', False)
-        if not owner_name:
-            owner_name = search_result_item['workspace']['name']
-        description = search_result_item['description']
-        last_commit = iso8601.parse_date(
-            search_result_item['updated_on'])
-        created_at = iso8601.parse_date(search_result_item['created_on'])
-        language = None
-        license = None
-
-        html_url = search_result_item['links']['html']['href']
-
-        super().__init__(name=name,
-                         description=description,
-                         html_url=html_url,
-                         owner_name=owner_name,
-                         last_commit=last_commit,
-                         created_at=created_at,
-                         language=language,
-                         license=license)
-
-
-class BitBucketCrawler(ICrawler):
-    name = 'bitbucket'
-
-    # https://developer.atlassian.com/bitbucket/api/2/reference/resource/repositories
-
-    def __init__(self, base_url, state=None, auth_data=None, user_agent=None, **kwargs):
-        super().__init__(
-            base_url=base_url,
-            path='',
-            state=state,
-            auth_data=auth_data,
-            user_agent=user_agent
-        )
-        self.access_token = None
-        self.token_expites_at = 0
-        self.refresh_token = None
-        self.client_id = auth_data.get('client_id')
-        self.client_secret = auth_data.get('client_secret')
-        self.request_url = urljoin(self.base_url, self.path)
-
-    def request(self, url):
-        if not self.access_token or self.token_expites_at < time.time():
-            response = self.requests.post(
-                urljoin('https://bitbucket.org', 'site/oauth2/access_token'),
-                data=dict(grant_type='client_credentials'),
-                auth=(self.client_id, self.client_secret)
-            )
-            data = response.json()
-            self.access_token = data['access_token']
-            self.token_expites_at = time.time() + int(data['expires_in'])
-            self.refresh_token = data['refresh_token']
-            self.requests.headers["Authorization"] = f"Bearer {self.access_token}"
-
-        return self.requests.get(url)
-
-    def crawl(self, state: dict = None) -> Tuple[bool, List[BitBucketResult], dict]:
-        url = False
-        if state:
-            url = state.get('url', False)
-            if not url:
-                logger.warning('{self} broken state, defaulting to start')
-
-        if not url:
-            url = '/2.0/repositories/?pagelen=100&sort=-created_on'
-
-        while url:
-            try:
-                response = self.request(urljoin(self.base_url, url))
-                response.raise_for_status()
-            except requests.exceptions.HTTPError as e:
-                logger.error(e)
-                logger.error(e.response.reason)
-                logger.error(e.response.text)
-                return False, [], {}
-
-            response_json = response.json()
-            repo_page = response_json['values']
-            repos = [BitBucketResult(result) for result in repo_page]
-            state = {'url': url}
-            yield True, repos, state
-
-            # https://stackoverflow.com/questions/32312758/python-requests-link-headers
-            url = response_json.get('next', False)
-            if not url:
-                # not hit rate limit, and we dont have a next url - finished!
-                # reset state
-                yield True, [], None
-            time.sleep(.1)
+        }
+        """

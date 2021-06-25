@@ -10,7 +10,7 @@ from flask import Blueprint, current_app
 from dotenv import load_dotenv
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
-from crawlers.constants import CRAWLER_IS_RUNNING_ENV_KEY
+from crawlers.constants import CRAWLER_IS_RUNNING_ENV_KEY, BLOCK_KEY_CALLBACK_URL
 from crawlers.lib.crawl import run_block
 
 load_dotenv()
@@ -60,9 +60,12 @@ def crawl(platform_types: list = None, block_url: str = None):
         for url in block_urls:
             response = session.get(url)
             block_data = response.json()
-
-            repos = run_block(block_data)
-            session.request(method="PUT", url=block_data["callback_url"], json=repos)
+            if BLOCK_KEY_CALLBACK_URL not in block_data:
+                logger.error(
+                    f"skip crawl - no callback_url found! - key: {BLOCK_KEY_CALLBACK_URL}, block_data: {block_data}")
+            else:
+                repos = run_block(block_data)
+                session.request(method="PUT", url=block_data[BLOCK_KEY_CALLBACK_URL], json=repos)
 
 
 @cli_bp.cli.command(help="Stop automatic crawlers, after finishing the current block.")

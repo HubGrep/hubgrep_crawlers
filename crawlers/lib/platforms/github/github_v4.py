@@ -12,7 +12,7 @@ from urllib.parse import urljoin
 from iso8601 import iso8601
 
 from crawlers.lib.platforms.i_crawler import ICrawler
-from crawlers.constants import GITHUB_QUERY_MAX, JOB_FROM_ID, JOB_TO_ID, JOB_IDS
+from crawlers.constants import GITHUB_QUERY_MAX, BLOCK_KEY_FROM_ID, BLOCK_KEY_TO_ID, BLOCK_KEY_IDS
 
 logger = logging.getLogger(__name__)
 
@@ -73,8 +73,8 @@ class GitHubV4Crawler(ICrawler):
                 f'{self} rate limiting: {ratelimit_remaining} requests remaining, sleeping {reset_in}s')
             time.sleep(reset_in)
 
-    @staticmethod
-    def set_state(state: dict = None) -> dict:
+    @classmethod
+    def set_state(cls, state: dict = None) -> dict:
         """
         Init and update state between each query.
 
@@ -85,13 +85,13 @@ class GitHubV4Crawler(ICrawler):
             state = {}
         state['i'] = state.get('i', -1) + 1  # increment how many times we have set the state
         state['empty_page_cnt'] = state.get('empty_page_cnt', 0)  # indicate that exploration has reached an end
-        state[JOB_IDS] = state.get(JOB_IDS, [])  # list when we have known indexes to use as IDs
-        state[JOB_FROM_ID] = state.get(JOB_FROM_ID, 0)  # without known IDs, we start from the lowest ID number
-        state[JOB_TO_ID] = state.get(JOB_TO_ID, -1)
-        if len(state[JOB_IDS]) > 0:
-            state['current'] = state.get('current', state[JOB_IDS][0])
+        state[BLOCK_KEY_IDS] = state.get(BLOCK_KEY_IDS, [])  # list when we have known indexes to use as IDs
+        state[BLOCK_KEY_FROM_ID] = state.get(BLOCK_KEY_FROM_ID, 0)  # without known IDs, we start from the lowest ID number
+        state[BLOCK_KEY_TO_ID] = state.get(BLOCK_KEY_TO_ID, -1)
+        if len(state[BLOCK_KEY_IDS]) > 0:
+            state['current'] = state.get('current', state[BLOCK_KEY_IDS][0])
         else:
-            state['current'] = state.get('current', state[JOB_FROM_ID])
+            state['current'] = state.get('current', state[BLOCK_KEY_FROM_ID])
         return state
 
     @staticmethod
@@ -106,8 +106,8 @@ class GitHubV4Crawler(ICrawler):
         """ Produce a subset of repository IDs from a larger known set, or a exploratory range within query max."""
         i = state['i'] * GITHUB_QUERY_MAX
         # we use known IDs when we have them, otherwise explore incrementally
-        if len(state[JOB_IDS]) > 0:
-            indexes = state[JOB_IDS][i:i + GITHUB_QUERY_MAX]
+        if len(state[BLOCK_KEY_IDS]) > 0:
+            indexes = state[BLOCK_KEY_IDS][i:i + GITHUB_QUERY_MAX]
             if len(indexes) > 0:
                 state['current'] = indexes[-1]
         else:
@@ -130,14 +130,18 @@ class GitHubV4Crawler(ICrawler):
 
         return list(filter(exists, nodes))
 
-    @staticmethod
-    def has_next_crawl(state: dict) -> bool:
+    @classmethod
+    def has_next_crawl(cls, state: dict) -> bool:
         """ Decide if there are more repositories to crawl for, within current job. """
-        return (state[JOB_TO_ID] == -1 or state['current'] < state[JOB_TO_ID]) \
+        return (state[BLOCK_KEY_TO_ID] == -1 or state['current'] < state[BLOCK_KEY_TO_ID]) \
                and state['empty_page_cnt'] < 10
 
     def crawl(self, state: dict = None) -> Tuple[bool, List[dict], dict]:
-        """ Run a GraphQL query against GitHubs V4 API. """
+        """
+        Run a GraphQL query against GitHubs V4 API.
+
+        :return: success, repos, state
+        """
         state = state or self.state
         while self.has_next_crawl(state):
             response = self.requests.post(
@@ -145,7 +149,7 @@ class GitHubV4Crawler(ICrawler):
                 json=dict(query=self.query, variables=self.get_graphql_variables(state))
             )
             repos = response.json()['data']['nodes']
-            if len(state[JOB_IDS]) == 0:
+            if len(state[BLOCK_KEY_IDS]) == 0:
                 # When we explore, we expect lots of non-public IDs, and we filter them out here.
                 # Conversely, when we have known IDs, we want to know which ones are deleted/no longer public
                 # and we want to keep them so we can match them by the order they arrive in.
@@ -158,9 +162,7 @@ class GitHubV4Crawler(ICrawler):
             self.handle_ratelimit(response)
             state = self.set_state(state)  # update state for next round
 
-        """
-        GraphQL expected response for valid nodes.
-
+        """ expected GraphQL response
         {
           "data": {
             "nodes": [
