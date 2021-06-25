@@ -11,16 +11,12 @@ class Config:
     LOGLEVEL = "debug"
     VERSION = "0.0.1"
 
-    CRAWLER_SLEEP_NO_JOB = 5
-    IS_AUTO_CRAWL = False
+    CRAWLER_SLEEP_NO_BLOCK = 5
 
 
 class _EnvironmentConfig(Config):
     CRAWLER_USER_AGENT = f'HobGrebbit v{Config.VERSION} {os.environ.get("HUBGREP_CRAWLERS_USER_AGENT_SUFFIX")}'
-    JOB_URL = os.environ.get("HUBGREP_CRAWLERS_JOB_URL", None)
-
-    if JOB_URL is not None:
-        IS_AUTO_CRAWL = True
+    INDEXER_URL = os.environ.get("HUBGREP_INDEXER_URL")
 
 
 class ProductionConfig(_EnvironmentConfig):

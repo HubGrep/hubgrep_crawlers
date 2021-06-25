@@ -30,8 +30,8 @@ class ICrawler:
 
 
     @staticmethod
-    def state_from_job_data(job_data: dict) -> dict:
-        return job_data  # override this function for specific crawler pre-processing
+    def state_from_block_data(block_data: dict) -> dict:
+        return block_data  # override this function for specific crawler pre-processing
 
     def handle_ratelimit(self, response):
         time.sleep(CRAWLER_DEFAULT_THROTTLE)

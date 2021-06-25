@@ -8,7 +8,6 @@ from flask import Flask
 
 from crawlers.constants import APP_ENV_BUILD, APP_ENV_DEVELOPMENT, APP_ENV_PRODUCTION, APP_ENV_TESTING
 from crawlers.lib.init_logging import init_logging
-from crawlers.lib.crawl import run_crawler
 from crawlers.api_blueprint import api_bp
 from crawlers.cli_blueprint import cli_bp
 
