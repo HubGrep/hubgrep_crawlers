@@ -1,38 +1,27 @@
-import json
+"""
+Legacy note:
+
+There is a limit at 1000 results for the search api (both rest and graphql)
+https://stackoverflow.com/questions/48371313/github-api-pagination-limit
+https://developer.github.com/v3/search/#about-the-search-api
+
+This version is not usable for us as we cannot get around this limit!
+"""
 import pathlib
 import logging
 import time
+from typing import List, Tuple
+from iso8601 import iso8601
 from urllib.parse import urljoin
 
-import datetime
-import requests
-from iso8601 import iso8601
-from lib.platforms._generic import GenericResult, GenericIndexer
+from crawlers.lib.platforms.i_crawler import ICrawler
 
 logger = logging.getLogger(__name__)
 
 
-"""
-
-!!!
-
-it seems like its not possible to get a list of all repos in v4
-this is kept for reference
-
-- there is a limit at 1000 results for the search api (both rest and graphql)
-https://stackoverflow.com/questions/48371313/github-api-pagination-limit
-https://developer.github.com/v3/search/#about-the-search-api
-
-- listing users does not work as it does in rest
-
-
-"""
-
-
-
 def get_query():
     current_folder_path = pathlib.Path(__file__).parent.absolute()
-    with open(current_folder_path.joinpath('query_repos.graphql')) as f:
+    with open(current_folder_path.joinpath('query_repos_search.graphql')) as f:
         query = f.read()
     return query
 
@@ -40,11 +29,8 @@ def get_query():
 query = get_query()
 
 
-class GitHubResult(GenericResult):
-    """
-    """
-
-    def __init__(self, platform_id, search_result_item):
+class GitHubResult:
+    def __init__(self, search_result_item):
         name = search_result_item['name']
         owner = search_result_item.get('owner', {})
         if owner:
@@ -64,8 +50,7 @@ class GitHubResult(GenericResult):
 
         html_url = search_result_item['url']
 
-        super().__init__(platform_id=platform_id,
-                         name=name,
+        super().__init__(name=name,
                          description=description,
                          html_url=html_url,
                          owner_name=owner_name,
@@ -75,19 +60,18 @@ class GitHubResult(GenericResult):
                          license=license)
 
 
-class GitHubIndexerV4(GenericIndexer):
+class GitHubV4Crawler(ICrawler):
     """
     """
+    name = 'github_v4_legacy'
 
-    name = 'github_v4'
-
-    def __init__(self, id, base_url, state=None, auth_data=None, **kwargs):
+    def __init__(self, base_url, state=None, auth_data=None, user_agent=None, **kwargs):
         super().__init__(
-            _id=id,
             base_url=base_url,
             path='graphql',
             state=state,
-            auth_data=auth_data
+            auth_data=auth_data,
+            user_agent=user_agent
         )
         self.request_url = urljoin(self.base_url, self.path)
         if auth_data:
@@ -104,7 +88,6 @@ class GitHubIndexerV4(GenericIndexer):
               "resetAt": "2020-11-29T14:26:15Z"
             },
         """
-        import datetime
         rate_limit = response.json().get('data').get('rateLimit')
         ratelimit_remaining = rate_limit['remaining']
 
@@ -131,8 +114,7 @@ class GitHubIndexerV4(GenericIndexer):
         }
         return variables
 
-    def crawl(self, state=None):
-
+    def crawl(self, state: dict = None) -> Tuple[bool, List[GitHubResult], dict]:
         # crawl all repos, set timestamp for this run
         # delete all repos with older timestamp (these are deleted)
         # start from beginning :)
@@ -154,7 +136,7 @@ class GitHubIndexerV4(GenericIndexer):
                 cursor = page_info['endCursor']
                 hasNextPage = page_info['hasNextPage']
 
-                repos = [GitHubResult(self._id, result['node'])
+                repos = [GitHubResult(result['node'])
                          for result in edges]
 
                 print(len(repos))

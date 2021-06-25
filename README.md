@@ -1,17 +1,31 @@
-# hubgrep indexer
+# HubGrep crawlers
 
+These crawlers are intended as microservices connected to a indexer (https://github.com/HubGrep/hubgrep_indexer).
 
-## set up
+## Setup
 
-### github
+Make a copy of the file `.env.dist`, rename it to `.env` and fill out the variables in it to fit your setup.
 
-- get credentials
--
+The important part, to automate the crawler, is to set `HUBGREP_CRAWLERS_JOB_URL` to connect to a running indexer.
 
-## backup
+Start the service:
 
-    python crawler.py export - | gzip -c > export.json.gz
+    docker-compose up
+    
+Automation is started by using the `CLI` (see section below).
 
-## restore a backup
+## API
+
+TODO - API is a currently a dead-end, but eventually used for health/monitoring purposes.
+
+## CLI
+
+To use the CLI, you must first have a shell inside a running container. Run:
+
+    docker-compose run --rm service /bin/bash
+
+Then, run a command (omit command to list all commands):
+
+    flask cli <COMMAND>
 
 

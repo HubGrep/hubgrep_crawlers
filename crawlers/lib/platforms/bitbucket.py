@@ -1,15 +1,16 @@
 import logging
 import time
-from urllib.parse import urljoin
-
 import requests
+from typing import List, Tuple
+from urllib.parse import urljoin
 from iso8601 import iso8601
-from lib.platforms._generic import GenericResult, GenericIndexer
+
+from crawlers.lib.platforms.i_crawler import ICrawler
 
 logger = logging.getLogger(__name__)
 
 
-class BitBucketResult(GenericResult):
+class BitBucketResult:
     """{
             "created_on": "2011-07-08T08:59:53.298617+00:00",
             "description": "",
@@ -134,7 +135,7 @@ class BitBucketResult(GenericResult):
         },
     """
 
-    def __init__(self, platform_id, search_result_item):
+    def __init__(self, search_result_item):
         name = search_result_item['name']
 
         owner_name = search_result_item['owner'].get('nickname', False)
@@ -151,8 +152,7 @@ class BitBucketResult(GenericResult):
 
         html_url = search_result_item['links']['html']['href']
 
-        super().__init__(platform_id=platform_id,
-                         name=name,
+        super().__init__(name=name,
                          description=description,
                          html_url=html_url,
                          owner_name=owner_name,
@@ -162,18 +162,18 @@ class BitBucketResult(GenericResult):
                          license=license)
 
 
-class BitBucketIndexer(GenericIndexer):
+class BitBucketCrawler(ICrawler):
     name = 'bitbucket'
 
     # https://developer.atlassian.com/bitbucket/api/2/reference/resource/repositories
 
-    def __init__(self, id, base_url, state=None, auth_data=None, **kwargs):
+    def __init__(self, base_url, state=None, auth_data=None, user_agent=None, **kwargs):
         super().__init__(
-            _id=id,
             base_url=base_url,
             path='',
             state=state,
-            auth_data=auth_data
+            auth_data=auth_data,
+            user_agent=user_agent
         )
         self.access_token = None
         self.token_expites_at = 0
@@ -197,7 +197,7 @@ class BitBucketIndexer(GenericIndexer):
 
         return self.requests.get(url)
 
-    def crawl(self, state=None):
+    def crawl(self, state: dict = None) -> Tuple[bool, List[BitBucketResult], dict]:
         url = False
         if state:
             url = state.get('url', False)
@@ -219,7 +219,7 @@ class BitBucketIndexer(GenericIndexer):
 
             response_json = response.json()
             repo_page = response_json['values']
-            repos = [BitBucketResult(self._id, result) for result in repo_page]
+            repos = [BitBucketResult(result) for result in repo_page]
             state = {'url': url}
             yield True, repos, state
 

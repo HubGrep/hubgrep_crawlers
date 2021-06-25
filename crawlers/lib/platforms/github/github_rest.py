@@ -1,15 +1,19 @@
+"""
+Crawl through GitHub via their REST API.
+Gets repositories connected to users.
+"""
 import logging
 import time
+from typing import List, Tuple
 from urllib.parse import urljoin
-
-import requests
 from iso8601 import iso8601
-from lib.platforms._generic import GenericResult, GenericIndexer
+
+from crawlers.lib.platforms.i_crawler import ICrawler
 
 logger = logging.getLogger(__name__)
 
 
-class GitHubResult(GenericResult):
+class GitHubRESTResult:
     """
     {
     "id": 1296269,
@@ -127,7 +131,7 @@ class GitHubResult(GenericResult):
     }
   }
     """
-    def __init__(self, platform_id, search_result_item):
+    def __init__(self, search_result_item):
         name = search_result_item['name']
         owner = search_result_item.get('owner', {})
         if owner:
@@ -146,8 +150,7 @@ class GitHubResult(GenericResult):
 
         html_url = search_result_item['html_url']
 
-        super().__init__(platform_id=platform_id,
-                         name=name,
+        super().__init__(name=name,
                          description=description,
                          html_url=html_url,
                          owner_name=owner_name,
@@ -157,7 +160,7 @@ class GitHubResult(GenericResult):
                          license=license)
 
 
-class GitHubIndexer(GenericIndexer):
+class GitHubRESTCrawler(ICrawler):
     """
     Accept-Ranges: bytes
     Content-Length: 32867
@@ -186,15 +189,15 @@ class GitHubIndexer(GenericIndexer):
     x-xss-protection: 1; mode=block
     """
 
-    name = 'github'
+    name = 'github_rest'
 
-    def __init__(self, id, base_url, state=None, auth_data=None, **kwargs):
+    def __init__(self, base_url, state=None, auth_data=None, user_agent=None, **kwargs):
         super().__init__(
-            _id=id,
             base_url=base_url,
             path='',
             state=state,
-            auth_data=auth_data
+            auth_data=auth_data,
+            user_agent=user_agent
         )
         self.request_url = urljoin(self.base_url, self.path)
         if auth_data:
@@ -234,7 +237,7 @@ class GitHubIndexer(GenericIndexer):
     def get_user_repos(self, user_repos_url):
         while user_repos_url:
             response = self.request(user_repos_url, params=dict(per_page=100))
-            results = [GitHubResult(self._id, item)
+            results = [GitHubRESTResult(item)
                        for item in response.json()]
 
             yield results
@@ -243,7 +246,7 @@ class GitHubIndexer(GenericIndexer):
             header_next = response.links.get('next', {})
             user_repos_url = header_next.get('url', False)
 
-    def crawl(self, state=None):
+    def crawl(self, state=None) -> Tuple[bool, List[GitHubRESTResult], dict]:
         user_url = False
         if state:
             user_url = state.get('user_url', False)

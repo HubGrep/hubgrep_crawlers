@@ -1,0 +1,50 @@
+"""
+Main crawler processing.
+"""
+import logging
+import time
+from typing import List, Generator
+from flask import current_app
+
+from crawlers.lib.platforms.i_crawler import ICrawler
+from crawlers.lib.platforms import platforms
+
+logger = logging.getLogger(__name__)
+
+
+def crawl(platform: ICrawler) -> Generator[List[dict], None, None]:
+    """
+    Run crawlers yielding results as it goes.
+    Crawlers are restricted to ranges, or blocks, after which they will stop.
+
+    :param platform: which platform to crawl, with what credentials
+    """
+    logger.debug(f'START block: {platform.name} - initial state: {platform.state}')
+    for success, result_chunk, state in platform.crawl(platform.state):
+        if success:
+            logger.info(f'got {len(result_chunk)} results from {platform}')
+
+            yield result_chunk
+        else:
+            # right now we dont want to emit failures (via yield) because that will send empty results back
+            # to the indexer, which can trigger a state reset (i.e. reached end, start over).
+            # TODO deal with failures - what are they?
+            pass
+    logger.debug(f'END block: {platform.name} - final state: {platform.state}')
+
+
+def run_block(block_data: dict) -> List[dict]:
+    platform_data = block_data["crawler"]
+    platform_type = platform_data["type"]
+    api_url = platform_data["api_url"]
+    api_auth_data = platform_data["request_headers"]
+    platform = platforms[platform_type](base_url=api_url,
+                                        state=platforms[platform_type].state_from_block_data(block_data),
+                                        auth_data=api_auth_data,
+                                        user_agent=current_app.config["CRAWLER_USER_AGENT"])
+    repos = []
+    started_at = time.time()
+    for chunk in crawl(platform):
+        repos += chunk
+    logger.info(f'{platform_type} - block yielded {len(repos)} results total, and took {time.time() - started_at}s')
+    return repos

@@ -1,15 +1,16 @@
 import logging
 import time
+import requests
+from typing import List, Tuple
 from urllib.parse import urljoin
 
-import requests
 from iso8601 import iso8601
-from lib.platforms._generic import GenericResult, GenericIndexer
+from crawlers.lib.platforms.i_crawler import ICrawler
 
 logger = logging.getLogger(__name__)
 
 
-class GitLabResult(GenericResult):
+class GitLabResult:
     """
     {'id': 1241825,
      'description': 'Pacote LaTeXe para produção de monografias, dissertações e teses',
@@ -37,7 +38,8 @@ class GitLabResult(GenericResult):
                    'avatar_url': 'https://secure.gravatar.com/avatar/ec3a8f5183465a232283493f3de0a80d?s=80&d=identicon',
                    'web_url': 'https://gitlab.com/dedekindbr'}}
     """
-    def __init__(self, platform_id, search_result_item):
+
+    def __init__(self, search_result_item):
         name = search_result_item['name']
         owner_name = search_result_item['namespace']['path']
         description = search_result_item['description'] or ''
@@ -49,8 +51,7 @@ class GitLabResult(GenericResult):
 
         html_url = search_result_item['http_url_to_repo']
 
-        super().__init__(platform_id=platform_id,
-                         name=name,
+        super().__init__(name=name,
                          description=description,
                          html_url=html_url,
                          owner_name=owner_name,
@@ -60,27 +61,27 @@ class GitLabResult(GenericResult):
                          license=license)
 
 
-class GitLabIndexer(GenericIndexer):
+class GitLabCrawler(ICrawler):
     name = 'gitlab'
 
     # https://docs.gitlab.com/ee/api/projects.html
 
-    def __init__(self, id, base_url, state=None, auth_data=None, **kwargs):
+    def __init__(self, base_url, state=None, auth_data=None, user_agent=None, **kwargs):
         super().__init__(
-            _id=id,
             base_url=base_url,
             path='/api/v4/projects',
             state=state,
-            auth_data=auth_data
+            auth_data=auth_data,
+            user_agent=user_agent
         )
         self.request_url = urljoin(self.base_url, self.path)
 
-    def crawl(self, state=None):
+    def crawl(self, state: dict = None) -> Tuple[bool, List[GitLabResult], dict]:
         url = False
         if state:
             url = state.get('url', False)
             if not url:
-                logger.warning('{self} broken state, defaulting to start')
+                logger.warning(f'{self} broken state, defaulting to start')
 
         if not url:
             url = '/api/v4/projects?pagination=keyset&per_page=100&order_by=id&sort=desc'
@@ -95,7 +96,7 @@ class GitLabIndexer(GenericIndexer):
                 logger.error(e.response.text)
                 return False, [], {}
             project_page = response.json()
-            repos = [GitLabResult(self._id, result) for result in project_page]
+            repos = [GitLabResult(result) for result in project_page]
             state = {'url': url}
             yield True, repos, state
 

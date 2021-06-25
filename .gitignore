@@ -3,3 +3,4 @@ env/
 __pycache__
 init.sh
 *.gz
+env_*
