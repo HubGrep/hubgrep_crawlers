@@ -62,7 +62,7 @@ def crawl(platform_types: list = None, block_url: str = None):
             block_data = response.json()
 
             repos = run_block(block_data)
-            session.request(method="POST", url=block_data["callback_url"], json=repos)
+            session.request(method="PUT", url=block_data["callback_url"], json=repos)
 
 
 @cli_bp.cli.command(help="Stop automatic crawlers, after finishing the current block.")
