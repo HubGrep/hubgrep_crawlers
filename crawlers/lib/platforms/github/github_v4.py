@@ -85,7 +85,8 @@ class GitHubV4Crawler(ICrawler):
             state = {}
         state['i'] = state.get('i', -1) + 1  # increment how many times we have set the state
         state['empty_page_cnt'] = state.get('empty_page_cnt', 0)  # indicate that exploration has reached an end
-        state[BLOCK_KEY_IDS] = state.get(BLOCK_KEY_IDS, [])  # list when we have known indexes to use as IDs
+        if not isinstance(state.get(BLOCK_KEY_IDS, None), list):
+            state[BLOCK_KEY_IDS] = []  # list when we have known indexes to use as IDs
         state[BLOCK_KEY_FROM_ID] = state.get(BLOCK_KEY_FROM_ID, 0)  # without known IDs, we start from the lowest ID number
         state[BLOCK_KEY_TO_ID] = state.get(BLOCK_KEY_TO_ID, -1)
         if len(state[BLOCK_KEY_IDS]) > 0:

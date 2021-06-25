@@ -24,7 +24,7 @@ class GiteaCrawler(ICrawler):
     @classmethod
     def set_state(cls, state: dict = None) -> dict:
         state["per_page"] = state.get("per_page", GITEA_PER_PAGE_MAX)
-        state = super(GiteaCrawler).set_state(state)
+        state = super().set_state(state)
         return state
 
     def crawl(self, state: dict = None) -> Tuple[bool, List[dict], dict]:
