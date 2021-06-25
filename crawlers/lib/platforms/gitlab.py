@@ -21,6 +21,8 @@ class GitLabCrawler(ICrawler):
             user_agent=user_agent
         )
         self.request_url = urljoin(self.base_url, self.path)
+        if auth_data:
+            self.requests.headers.update({"PRIVATE-TOKEN": auth_data['PRIVATE-TOKEN']})
 
     @classmethod
     def set_state(cls, state: dict = None) -> dict:
