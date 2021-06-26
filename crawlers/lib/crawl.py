@@ -7,7 +7,6 @@ from typing import List, Generator
 from flask import current_app
 
 from crawlers.constants import BLOCK_KEY_CALLBACK_URL
-from crawlers.lib.crawl import run_block
 
 from crawlers.lib.platforms.i_crawler import ICrawler
 from crawlers.lib.platforms import platforms
@@ -17,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 def process_block_url(session, block_url) -> None:
     response = session.get(block_url)
+    print(response.text)
     block_data = response.json()
 
     if block_data.get("status") == "sleep":
