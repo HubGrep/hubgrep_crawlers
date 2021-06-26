@@ -8,13 +8,12 @@ import click
 from typing import List
 from urllib.parse import urljoin
 from flask import Blueprint, current_app
-import time
-from flask import Blueprint
 from dotenv import load_dotenv
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
-from crawlers.constants import CRAWLER_IS_RUNNING_ENV_KEY, BLOCK_KEY_CALLBACK_URL
-from crawlers.lib.crawl import run_block
+from crawlers.constants import CRAWLER_IS_RUNNING_ENV_KEY
+from crawlers.lib.crawl import process_block_url
+
 
 load_dotenv()
 
@@ -33,27 +32,6 @@ def get_requests_session():
     session.mount("https://", HTTPAdapter(max_retries=retries))
     return session
 
-
-def process_block_url(session, block_url) -> None:
-    response = session.get(block_url)
-    block_data = response.json()
-
-    if block_data.get("status") == "sleep":
-        retry_time = block_data["retry_at"]
-        sleep_time = retry_time - time.time()
-        print(f"sleeping {sleep_time}...")
-        time.sleep(sleep_time)
-        return
-
-    if BLOCK_KEY_CALLBACK_URL not in block_data:
-        logger.error(
-            f"skip crawl - no callback_url found! - key: {BLOCK_KEY_CALLBACK_URL}, block_data: {block_data}"
-        )
-    else:
-        repos = run_block(block_data)
-        session.request(
-            method="PUT", url=block_data[BLOCK_KEY_CALLBACK_URL], json=repos
-        )
 
 @cli_bp.cli.command(help="Start automatic crawler against specific hosters.")
 @click.argument("hoster_api_domains", nargs=-1)
@@ -95,13 +73,13 @@ def crawl_type(platform_type: str):
     indexer_url = current_app.config["INDEXER_URL"]
     session = get_requests_session()
 
-    block_url = urljoin(indexer_url, f"api/v1/hosters/{platform_type}/loadbalanced_block")
+    block_url = urljoin(
+        indexer_url, f"api/v1/hosters/{platform_type}/loadbalanced_block"
+    )
 
     os.environ[CRAWLER_IS_RUNNING_ENV_KEY] = "1"
     while os.environ[CRAWLER_IS_RUNNING_ENV_KEY]:
         process_block_url(session, block_url)
-
-
 
 
 @cli_bp.cli.command(help="Stop automatic crawlers, after finishing the current block.")

@@ -6,11 +6,35 @@ import time
 from typing import List, Generator
 from flask import current_app
 
+from crawlers.constants import BLOCK_KEY_CALLBACK_URL
+from crawlers.lib.crawl import run_block
+
 from crawlers.lib.platforms.i_crawler import ICrawler
 from crawlers.lib.platforms import platforms
 
 logger = logging.getLogger(__name__)
 
+
+def process_block_url(session, block_url) -> None:
+    response = session.get(block_url)
+    block_data = response.json()
+
+    if block_data.get("status") == "sleep":
+        retry_time = block_data["retry_at"]
+        sleep_time = retry_time - time.time()
+        print(f"sleeping {sleep_time}...")
+        time.sleep(sleep_time)
+        return
+
+    if BLOCK_KEY_CALLBACK_URL not in block_data:
+        logger.error(
+            f"skip crawl - no callback_url found! - key: {BLOCK_KEY_CALLBACK_URL}, block_data: {block_data}"
+        )
+    else:
+        repos = run_block(block_data)
+        session.request(
+            method="PUT", url=block_data[BLOCK_KEY_CALLBACK_URL], json=repos
+        )
 
 def crawl(platform: ICrawler) -> Generator[List[dict], None, None]:
     """
