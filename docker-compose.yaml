@@ -14,15 +14,38 @@ services:
     ports:
       - 8080-8999:8080
 
-    command: >
-      bash -ic " \
-        pip install -r requirements.txt
-        flask run --host 0.0.0.0 --port 8080
-        "
+    #command: >
+    #  bash -ic " \
+    #    pip install -r requirements.txt
+    #    flask run --host 0.0.0.0 --port 8080
+    #    "
     tty: true
     networks:
       - hubgrep
 
+  gitea_crawler:
+    extends: service
+    command: >
+      bash -ic " \
+        pip install -r requirements.txt
+        flask cli crawl-type gitea
+        "
+
+  gitlab_crawler:
+    extends: service
+    command: >
+      bash -ic " \
+        pip install -r requirements.txt
+        flask cli crawl-type gitlab
+        "
+
+  github_crawler:
+    extends: service
+    command: >
+      bash -ic " \
+        pip install -r requirements.txt
+        flask cli crawl-type github
+        "
 networks:
   hubgrep:
     name: hubgrep
