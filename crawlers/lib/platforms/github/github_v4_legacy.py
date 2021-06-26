@@ -97,8 +97,8 @@ class GitHubV4Crawler(ICrawler):
                 json=dict(query=query, variables=variables)
             )
             try:
-                data = response.json(['data'])
-                edges = data['search']['edges']
+                data = response.json()
+                edges = data['data']['search']['edges']
 
                 page_info = data['search']['pageInfo']
                 cursor = page_info['endCursor']
