@@ -29,37 +29,6 @@ def get_query():
 query = get_query()
 
 
-class GitHubResult:
-    def __init__(self, search_result_item):
-        name = search_result_item['name']
-        owner = search_result_item.get('owner', {})
-        if owner:
-            owner_name = owner.get('login', None)
-        else:
-            owner_name = None
-        description = search_result_item['description'] or ''
-
-        pushed_at = search_result_item.get('pushedAt', False)
-        if pushed_at:
-            last_commit = iso8601.parse_date(pushed_at)
-        else:
-            last_commit = None
-        created_at = iso8601.parse_date(search_result_item['updatedAt'])
-        language = None
-        license = None
-
-        html_url = search_result_item['url']
-
-        super().__init__(name=name,
-                         description=description,
-                         html_url=html_url,
-                         owner_name=owner_name,
-                         last_commit=last_commit,
-                         created_at=created_at,
-                         language=language,
-                         license=license)
-
-
 class GitHubV4Crawler(ICrawler):
     """
     """
@@ -114,10 +83,8 @@ class GitHubV4Crawler(ICrawler):
         }
         return variables
 
-    def crawl(self, state: dict = None) -> Tuple[bool, List[GitHubResult], dict]:
-        # crawl all repos, set timestamp for this run
-        # delete all repos with older timestamp (these are deleted)
-        # start from beginning :)
+    def crawl(self, state: dict = None) -> Tuple[bool, List[dict], dict]:
+        """ :return: success, repos, state """
         cursor = None
         if state:
             cursor = state.get('cursor', None)
@@ -130,14 +97,14 @@ class GitHubV4Crawler(ICrawler):
                 json=dict(query=query, variables=variables)
             )
             try:
-                edges = response.json()['data']['search']['edges']
+                data = response.json()
+                edges = data['data']['search']['edges']
 
-                page_info = response.json()['data']['search']['pageInfo']
+                page_info = data['search']['pageInfo']
                 cursor = page_info['endCursor']
                 hasNextPage = page_info['hasNextPage']
 
-                repos = [GitHubResult(result['node'])
-                         for result in edges]
+                repos = [result['node'] for result in edges]
 
                 print(len(repos))
                 print(hasNextPage)
