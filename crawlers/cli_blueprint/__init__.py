@@ -33,6 +33,10 @@ def get_requests_session():
     return session
 
 
+# todo: make list command
+# todo: make basic command that takes the indexer block url
+
+
 @cli_bp.cli.command(help="Start automatic crawler against specific hosters.")
 @click.argument("hoster_api_domains", nargs=-1)
 def crawl_hoster(hoster_api_domains: List[str] = None):

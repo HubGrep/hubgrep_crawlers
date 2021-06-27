@@ -38,7 +38,6 @@ def _hoster_session_request(method, session, url, error_count=0, *args, **kwargs
 def process_block_url(session, block_url) -> None:
     response = _hoster_session_request("get", session, block_url)
 
-    print(response.text)
     block_data = response.json()
 
     if block_data.get("status") == "sleep":
@@ -54,7 +53,6 @@ def process_block_url(session, block_url) -> None:
         )
     else:
         repos = run_block(block_data)
-        print(repos)
         _hoster_session_request(
             "PUT", session, url=block_data[BLOCK_KEY_CALLBACK_URL], json=repos
         )
