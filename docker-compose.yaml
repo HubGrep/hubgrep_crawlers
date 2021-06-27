@@ -24,6 +24,7 @@ services:
       - hubgrep
 
   gitea_crawler:
+    scale: 3
     extends: service
     command: >
       bash -ic " \
@@ -32,13 +33,13 @@ services:
         "
 
   gitlab_crawler:
+    scale: 0
     extends: service
     command: >
       bash -ic " \
         pip install -r requirements.txt
         flask cli crawl-type gitlab
         "
-
   github_crawler:
     extends: service
     command: >

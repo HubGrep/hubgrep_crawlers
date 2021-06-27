@@ -13,9 +13,31 @@ from crawlers.lib.platforms import platforms
 
 logger = logging.getLogger(__name__)
 
+default_error_sleep = 10
+max_errors = 5
+
+
+def _hoster_session_request(method, session, url, error_count=0, *args, **kwargs):
+    try:
+        response = session.request(method, url, *args, **kwargs)
+    except Exception as e:
+        error_count += 1
+        if error_count > max_errors:
+            logger.error("error keeps recurring - quitting")
+            exit(1)
+        sleep_time = default_error_sleep * error_count
+        logger.error(e)
+        logger.warning(f"cant connect to indexer. sleeping {sleep_time}s")
+        time.sleep(sleep_time)
+        return _hoster_session_request(
+            method, session, url, error_count=error_count, *args, **kwargs
+        )
+    return response
+
 
 def process_block_url(session, block_url) -> None:
-    response = session.get(block_url)
+    response = _hoster_session_request("get", session, block_url)
+
     print(response.text)
     block_data = response.json()
 
@@ -32,9 +54,11 @@ def process_block_url(session, block_url) -> None:
         )
     else:
         repos = run_block(block_data)
-        session.request(
-            method="PUT", url=block_data[BLOCK_KEY_CALLBACK_URL], json=repos
+        print(repos)
+        _hoster_session_request(
+            "PUT", session, url=block_data[BLOCK_KEY_CALLBACK_URL], json=repos
         )
+
 
 def crawl(platform: ICrawler) -> Generator[List[dict], None, None]:
     """
@@ -43,10 +67,10 @@ def crawl(platform: ICrawler) -> Generator[List[dict], None, None]:
 
     :param platform: which platform to crawl, with what credentials
     """
-    logger.debug(f'START block: {platform.name} - initial state: {platform.state}')
+    logger.debug(f"START block: {platform.name} - initial state: {platform.state}")
     for success, result_chunk, state in platform.crawl(platform.state):
         if success:
-            logger.info(f'got {len(result_chunk)} results from {platform}')
+            logger.info(f"got {len(result_chunk)} results from {platform}")
 
             yield result_chunk
         else:
@@ -54,7 +78,7 @@ def crawl(platform: ICrawler) -> Generator[List[dict], None, None]:
             # to the indexer, which can trigger a state reset (i.e. reached end, start over).
             # TODO deal with failures - what are they?
             pass
-    logger.debug(f'END block: {platform.name} - final state: {platform.state}')
+    logger.debug(f"END block: {platform.name} - final state: {platform.state}")
 
 
 def run_block(block_data: dict) -> List[dict]:
@@ -62,13 +86,17 @@ def run_block(block_data: dict) -> List[dict]:
     platform_type = platform_data["type"]
     api_url = platform_data["api_url"]
     api_auth_data = platform_data["request_headers"]
-    platform = platforms[platform_type](base_url=api_url,
-                                        state=platforms[platform_type].state_from_block_data(block_data),
-                                        auth_data=api_auth_data,
-                                        user_agent=current_app.config["CRAWLER_USER_AGENT"])
+    platform = platforms[platform_type](
+        base_url=api_url,
+        state=platforms[platform_type].state_from_block_data(block_data),
+        auth_data=api_auth_data,
+        user_agent=current_app.config["CRAWLER_USER_AGENT"],
+    )
     repos = []
     started_at = time.time()
     for chunk in crawl(platform):
         repos += chunk
-    logger.info(f'{platform_type} - block yielded {len(repos)} results total, and took {time.time() - started_at}s')
+    logger.info(
+        f"{platform_type} - block yielded {len(repos)} results total, and took {time.time() - started_at}s"
+    )
     return repos
