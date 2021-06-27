@@ -34,7 +34,16 @@ def get_requests_session():
 
 
 # todo: make list command
-# todo: make basic command that takes the indexer block url
+
+
+@cli_bp.cli.command(help="Start automatic crawler against a specific block_url.")
+@click.argument("block_url")
+def crawl_block_url(block_url: str):
+    session = get_requests_session()
+
+    os.environ[CRAWLER_IS_RUNNING_ENV_KEY] = "1"
+    while os.environ[CRAWLER_IS_RUNNING_ENV_KEY]:
+        process_block_url(session, block_url)
 
 
 @cli_bp.cli.command(help="Start automatic crawler against specific hosters.")
