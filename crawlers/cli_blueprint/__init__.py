@@ -5,13 +5,15 @@ CLI tool for crawler interactions.
 import os
 import logging
 import click
+from typing import List
 from urllib.parse import urljoin
 from flask import Blueprint, current_app
 from dotenv import load_dotenv
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
-from crawlers.constants import CRAWLER_IS_RUNNING_ENV_KEY, BLOCK_KEY_CALLBACK_URL
-from crawlers.lib.crawl import run_block
+from crawlers.constants import CRAWLER_IS_RUNNING_ENV_KEY
+from crawlers.lib.crawl import process_block_url
+
 
 load_dotenv()
 
@@ -31,41 +33,66 @@ def get_requests_session():
     return session
 
 
-@cli_bp.cli.command(help="Start automatic crawler with a hoster type (such as github) or against a specific block_url.")
-@click.argument("platform-types", nargs=-1)
-@click.option("-u", "--block-url", "block_url", nargs=1)
-def crawl(platform_types: list = None, block_url: str = None):
+# todo: make list command
+
+
+@cli_bp.cli.command(help="Start automatic crawler against a specific block_url.")
+@click.argument("block_url")
+def crawl_block_url(block_url: str):
+    session = get_requests_session()
+
+    os.environ[CRAWLER_IS_RUNNING_ENV_KEY] = "1"
+    while os.environ[CRAWLER_IS_RUNNING_ENV_KEY]:
+        process_block_url(session, block_url)
+
+
+@cli_bp.cli.command(help="Start automatic crawler against specific hosters.")
+@click.argument("hoster_api_domains", nargs=-1)
+def crawl_hoster(hoster_api_domains: List[str] = None):
+    hoster_api_domains = list(hoster_api_domains)
     indexer_url = current_app.config["INDEXER_URL"]
     session = get_requests_session()
     block_urls = []
 
-    if platform_types and len(platform_types) > 0:
-        # gets a list of all hosters from the indexer
-        response = session.get(urljoin(indexer_url, "api/v1/hosters"))
-        response.raise_for_status()
-
+    # gets a list of all hosters from the indexer
+    response = session.get(urljoin(indexer_url, "api/v1/hosters"))
+    response.raise_for_status()
+    if hoster_api_domains:
         for hoster in response.json():
-            if hoster["type"] in platform_types:
-                logger.debug(f'adding hoster: {hoster}')
-                block_urls.append(urljoin(indexer_url, f"api/v1/hosters/{hoster['id']}/block"))
+            # todo: maybe this should match without protocol as well?
+            domain = hoster["api_url"]
+            if domain in hoster_api_domains:
+                logger.debug(f"adding hoster: {hoster}")
+                block_urls.append(
+                    urljoin(indexer_url, f"api/v1/hosters/{hoster['id']}/block")
+                )
+                hoster_api_domains.remove(domain)
+        # left over api domains means the indexer doesnt know them
+        if hoster_api_domains:
+            raise KeyError(f"could not find hosters: {hoster_api_domains} in indexer!")
 
-    elif block_url:
-        logger.debug(f"run crawler against: {block_url}")
-        block_urls.append(block_url)
     else:
-        raise KeyError('specify at least one option: "-platform-types" or "-job-url"')
+        raise KeyError("specify at least one hoster api url!")
 
     os.environ[CRAWLER_IS_RUNNING_ENV_KEY] = "1"
     while os.environ[CRAWLER_IS_RUNNING_ENV_KEY]:
         for url in block_urls:
-            response = session.get(url)
-            block_data = response.json()
-            if BLOCK_KEY_CALLBACK_URL not in block_data:
-                logger.error(
-                    f"skip crawl - no callback_url found! - key: {BLOCK_KEY_CALLBACK_URL}, block_data: {block_data}")
-            else:
-                repos = run_block(block_data)
-                session.request(method="PUT", url=block_data[BLOCK_KEY_CALLBACK_URL], json=repos)
+            process_block_url(session, url)
+
+
+@cli_bp.cli.command(help="Start automatic crawler with a hoster type (such as github)")
+@click.argument("platform-type")
+def crawl_type(platform_type: str):
+    indexer_url = current_app.config["INDEXER_URL"]
+    session = get_requests_session()
+
+    block_url = urljoin(
+        indexer_url, f"api/v1/hosters/{platform_type}/loadbalanced_block"
+    )
+
+    os.environ[CRAWLER_IS_RUNNING_ENV_KEY] = "1"
+    while os.environ[CRAWLER_IS_RUNNING_ENV_KEY]:
+        process_block_url(session, block_url)
 
 
 @cli_bp.cli.command(help="Stop automatic crawlers, after finishing the current block.")
