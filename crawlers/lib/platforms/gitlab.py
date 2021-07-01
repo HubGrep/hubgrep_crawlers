@@ -1,4 +1,5 @@
 import logging
+import time
 from typing import List, Tuple
 from urllib.parse import urljoin
 
@@ -30,6 +31,18 @@ class GitLabCrawler(ICrawler):
         state = super().set_state(state)
         return state
 
+    def handle_ratelimit(self, response):
+        remaining = int(response.headers.get("RateLimit-Remaining", -1))
+        reset_ts = int(response.headers.get("RateLimit-Reset", -1))
+        if remaining == -1 or reset_ts == -1:
+            # without headers we use default throttling
+            super().handle_ratelimit(response)
+        elif remaining == 0:
+            # otherwise spam&sleep
+            sleep_s = reset_ts - time.time()
+            logger.info(f"ratelimit exceeded for {self}, sleeping for {sleep_s} seconds...")
+            time.sleep(sleep_s)
+
     def crawl(self, state: dict = None) -> Tuple[bool, List[dict], dict]:
         """ :return: success, repos, state """
         state = state or self.state
@@ -42,6 +55,8 @@ class GitLabCrawler(ICrawler):
             )
             try:
                 response = self.requests.get(self.request_url, params=params)
+                if not response.ok:
+                    return False, [], state
                 repos = response.json()
             except Exception as e:
                 logger.error(e)
