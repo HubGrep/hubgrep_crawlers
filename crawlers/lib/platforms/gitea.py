@@ -37,6 +37,8 @@ class GiteaCrawler(ICrawler):
             )
             try:
                 response = self.requests.get(self.request_url, params=params)
+                if not response.ok:
+                    return False, [], state
                 result = response.json()
             except Exception as e:
                 logger.error(e)

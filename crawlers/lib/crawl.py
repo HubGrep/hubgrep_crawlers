@@ -43,7 +43,7 @@ def process_block_url(session, block_url) -> None:
     if block_data.get("status") == "sleep":
         retry_time = block_data["retry_at"]
         sleep_time = retry_time - time.time()
-        print(f"sleeping {sleep_time}...")
+        logger.info(f"sleeping {sleep_time}...")
         time.sleep(sleep_time)
         return
 

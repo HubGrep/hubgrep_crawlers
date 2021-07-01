@@ -10,9 +10,10 @@ services:
 
     restart: ${RESTART}
 
+    # DISABLED as it was failing seemingly randomly (on mac)
     # uplink port to host
-    ports:
-      - 8080-8999:8080
+    # ports:
+    #   - 8080-8999:8080
 
     #command: >
     #  bash -ic " \
@@ -33,7 +34,7 @@ services:
         "
 
   gitlab_crawler:
-    scale: 0
+    scale: 1
     extends: service
     command: >
       bash -ic " \
@@ -41,6 +42,7 @@ services:
         flask cli crawl-type gitlab
         "
   github_crawler:
+    scale: 1
     extends: service
     command: >
       bash -ic " \
