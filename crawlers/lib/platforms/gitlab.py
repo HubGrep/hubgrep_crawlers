@@ -56,6 +56,7 @@ class GitLabCrawler(ICrawler):
             try:
                 response = self.requests.get(self.request_url, params=params)
                 if not response.ok:
+                    # TODO needs more checking before we return on this block
                     return False, [], state
                 repos = response.json()
             except Exception as e:
