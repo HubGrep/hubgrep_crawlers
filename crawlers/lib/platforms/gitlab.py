@@ -56,11 +56,14 @@ class GitLabCrawler(ICrawler):
             try:
                 response = self.requests.get(self.request_url, params=params)
                 if not response.ok:
-                    return False, [], state
+                    logger.warning(f"(skipping block part) gitlab - {self.base_url} " +
+                                   f"- response not ok, status: {response.status_code}")
+                    logger.warning(response.headers.__dict__)
+                    return False, [], state  # nr.1 - we skip rest of this block, hope we get it next time
                 repos = response.json()
             except Exception as e:
-                logger.error(e)
-                return False, [], state
+                logger.exception(f"(skipping block part) gitlab crawler crashed")
+                return False, [], state  # nr.2 - we skip rest of this block, hope we get it next time
 
             state['is_done'] = len(repos) != state['per_page']  # finish early, we reached the end
 

@@ -58,20 +58,24 @@ class GitHubV4Crawler(ICrawler):
               "resetAt": "2020-11-29T14:26:15Z"
             },
         """
-        rate_limit = response.json().get('data').get('rateLimit')
-        ratelimit_remaining = rate_limit['remaining']
+        rate_limit = response.json().get('data', {}).get('rateLimit', None)
+        if rate_limit:
+            ratelimit_remaining = rate_limit['remaining']
 
-        reset_at = iso8601.parse_date(rate_limit['resetAt'])
-        ratelimit_reset_timestamp = reset_at.timestamp()
+            reset_at = iso8601.parse_date(rate_limit['resetAt'])
+            ratelimit_reset_timestamp = reset_at.timestamp()
 
-        reset_in = ratelimit_reset_timestamp - time.time()
+            reset_in = ratelimit_reset_timestamp - time.time()
 
-        logger.info(
-            f'{self} {ratelimit_remaining} requests remaining, reset in {reset_in}s')
-        if ratelimit_remaining < 1:
-            logger.warning(
-                f'{self} rate limiting: {ratelimit_remaining} requests remaining, sleeping {reset_in}s')
-            time.sleep(reset_in)
+            logger.info(
+                f'{self} {ratelimit_remaining} requests remaining, reset in {reset_in}s')
+            if ratelimit_remaining < 1:
+                logger.warning(
+                    f'{self} rate limiting: {ratelimit_remaining} requests remaining, sleeping {reset_in}s')
+                time.sleep(reset_in)
+        else:
+            logger.warning("no ratelimit found in github response data - using fallback throttling")
+            super().handle_ratelimit(response)
 
     @classmethod
     def set_state(cls, state: dict = None) -> dict:
@@ -145,22 +149,30 @@ class GitHubV4Crawler(ICrawler):
         """
         state = state or self.state
         while self.has_next_crawl(state):
-            response = self.requests.post(
-                url=self.request_url,
-                json=dict(query=self.query, variables=self.get_graphql_variables(state))
-            )
-            repos = response.json()['data']['nodes']
-            if len(state[BLOCK_KEY_IDS]) == 0:
-                # When we explore, we expect lots of non-public IDs, and we filter them out here.
-                # Conversely, when we have known IDs, we want to know which ones are deleted/no longer public
-                # and we want to keep them so we can match them by the order they arrive in.
+            try:
+                response = self.requests.post(
+                    url=self.request_url,
+                    json=dict(query=self.query, variables=self.get_graphql_variables(state))
+                )
+                if not response.ok:
+                    logger.warning(f"(skipping block part) github response not ok, status: {response.status_code}")
+                    logger.warning(response.headers.__dict__)
+                    self.handle_ratelimit(response)
+                    state = self.set_state(state)
+                    yield False, [], state
+                    continue  # skip to next crawl
+
+                repos = response.json()['data']['nodes']
                 repos = self.remove_invalid_nodes(repos)
 
-            if len(repos) == 0:
-                state['empty_page_cnt'] += 1
+                if len(repos) == 0:
+                    state['empty_page_cnt'] += 1
 
-            yield True, repos, state
-            self.handle_ratelimit(response)
+                yield True, repos, state
+                self.handle_ratelimit(response)
+            except Exception as e:
+                logger.exception(f"(skipping block part) github crawler crashed")
+
             state = self.set_state(state)  # update state for next round
 
         """ expected GraphQL response
