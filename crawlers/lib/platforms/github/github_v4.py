@@ -151,7 +151,7 @@ class GitHubV4Crawler(ICrawler):
         while self.has_next_crawl(state):
             try:
                 response = self.requests.post(
-                    url="asd" + self.request_url,
+                    url=self.request_url,
                     json=dict(query=self.query, variables=self.get_graphql_variables(state))
                 )
                 if not response.ok:
