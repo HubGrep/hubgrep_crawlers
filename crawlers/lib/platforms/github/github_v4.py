@@ -159,14 +159,11 @@ class GitHubV4Crawler(ICrawler):
                     logger.warning(response.headers.__dict__)
                     self.handle_ratelimit(response)
                     state = self.set_state(state)
+                    yield False, [], state
                     continue  # skip to next crawl
 
                 repos = response.json()['data']['nodes']
-                if len(state[BLOCK_KEY_IDS]) == 0:
-                    # When we explore, we expect lots of non-public IDs, and we filter them out here.
-                    # Conversely, when we have known IDs, we want to know which ones are deleted/no longer public
-                    # and we want to keep them so we can match them by the order they arrive in.
-                    repos = self.remove_invalid_nodes(repos)
+                repos = self.remove_invalid_nodes(repos)
 
                 if len(repos) == 0:
                     state['empty_page_cnt'] += 1
