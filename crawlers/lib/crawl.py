@@ -69,7 +69,7 @@ def crawl(platform: ICrawler) -> Generator[List[dict], None, None]:
     for success, block_chunk, state in platform.crawl():
         if success:
             logger.info(f"got {len(block_chunk)} results from {platform} "
-                        f"- first repo id: {next(iter(block_chunk), None)['id']}")
+                        f"- first repo id: {next(iter(block_chunk), {}).get('id', None)}")
             yield block_chunk
         else:
             # right now we dont want to emit failures (via yield) because that will send empty results back
