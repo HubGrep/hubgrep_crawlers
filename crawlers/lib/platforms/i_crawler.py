@@ -1,6 +1,6 @@
 """ All crawlers share this interface to work with our crawler API/CLI. """
+import logging
 import math
-
 import requests
 import time
 from typing import List, Tuple
@@ -8,6 +8,8 @@ from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 
 from crawlers.constants import CRAWLER_DEFAULT_THROTTLE, BLOCK_KEY_FROM_ID, BLOCK_KEY_TO_ID
+
+logger = logging.getLogger(__name__)
 
 
 class ICrawler:
@@ -30,7 +32,8 @@ class ICrawler:
     def __str__(self):
         return f'<{self.name}@{self.base_url}>'
 
-    def handle_ratelimit(self, response):
+    def handle_ratelimit(self, response=None):
+        logger.debug(f"default throttling - sleep for {CRAWLER_DEFAULT_THROTTLE}")
         time.sleep(CRAWLER_DEFAULT_THROTTLE)
 
     def crawl(self, state: dict) -> Tuple[bool, List[dict], dict]:

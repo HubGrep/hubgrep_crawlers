@@ -75,10 +75,10 @@ class GitHubV4Crawler(ICrawler):
                         f'{self} rate limiting: {ratelimit_remaining} requests remaining, sleeping {reset_in}s')
                     time.sleep(reset_in)
             else:
-                logger.warning("no ratelimit found in github response data - using fallback throttling")
-                super().handle_ratelimit(response)
+                logger.warning("no ratelimit found in github response data")
+                super().handle_ratelimit()
         else:
-            super().handle_ratelimit(response)
+            super().handle_ratelimit()
 
     @classmethod
     def set_state(cls, state: dict = None) -> dict:

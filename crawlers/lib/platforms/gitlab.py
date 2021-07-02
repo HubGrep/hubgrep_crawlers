@@ -31,17 +31,20 @@ class GitLabCrawler(ICrawler):
         state = super().set_state(state)
         return state
 
-    def handle_ratelimit(self, response):
-        remaining = int(response.headers.get("RateLimit-Remaining", -1))
-        reset_ts = int(response.headers.get("RateLimit-Reset", -1))
-        if remaining == -1 or reset_ts == -1:
-            # without headers we use default throttling
-            super().handle_ratelimit(response)
-        elif remaining == 0:
-            # otherwise spam&sleep
-            sleep_s = reset_ts - time.time()
-            logger.info(f"ratelimit exceeded for {self}, sleeping for {sleep_s} seconds...")
-            time.sleep(sleep_s)
+    def handle_ratelimit(self, response = None):
+        if response:
+            remaining = int(response.headers.get("RateLimit-Remaining", -1))
+            reset_ts = int(response.headers.get("RateLimit-Reset", -1))
+            if remaining == -1 or reset_ts == -1:
+                logger.warning("no ratelimit found in gitlab response headers")
+                super().handle_ratelimit(response)
+            elif remaining == 0:
+                # otherwise spam&sleep
+                sleep_s = reset_ts - time.time()
+                logger.info(f"ratelimit exceeded for {self}, sleeping for {sleep_s} seconds...")
+                time.sleep(sleep_s)
+        else:
+            super().handle_ratelimit()
 
     def crawl(self, state: dict = None) -> Tuple[bool, List[dict], dict]:
         """ :return: success, repos, state """
