@@ -38,10 +38,12 @@ class GiteaCrawler(ICrawler):
             try:
                 response = self.requests.get(self.request_url, params=params)
                 if not response.ok:
+                    logger.warning(f"(skipping block part) gitea - {self.base_url} " +
+                                   f"- response not ok, status: {response.status_code}")
                     return False, [], state  # nr.1 - we skip rest of this block, hope we get it next time
                 result = response.json()
             except Exception as e:
-                logger.error(e)
+                logger.exception(f"(skipping block part) gitea crawler crashed")
                 return False, [], state  # nr.2 - we skip rest of this block, hope we get it next time
 
             state['is_done'] = len(result['data']) != state['per_page']  # finish early, we reached the end
