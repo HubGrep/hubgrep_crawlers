@@ -67,6 +67,8 @@ class GitHubV4Crawler(ICrawler):
                 ratelimit_reset_timestamp = reset_at.timestamp()
 
                 reset_in = ratelimit_reset_timestamp - time.time()
+                # a bit longer, just to be sure
+                reset_in += 5
 
                 logger.info(
                     f'{self} {ratelimit_remaining} requests remaining, reset in {reset_in}s')
@@ -156,9 +158,10 @@ class GitHubV4Crawler(ICrawler):
         state = state or self.state
         while self.has_next_crawl(state):
             try:
+                variables=self.get_graphql_variables(state)
                 response = self.requests.post(
                     url=self.request_url,
-                    json=dict(query=self.query, variables=self.get_graphql_variables(state))
+                    json=dict(query=self.query, variables=variables)
                 )
                 if response.ok:
                     repos = response.json()['data']['nodes']
@@ -170,7 +173,6 @@ class GitHubV4Crawler(ICrawler):
                     logger.warning(f"(skipping block chunk) github response not ok, status: {response.status_code}")
                     logger.warning(response.headers.__dict__)
                     yield False, [], state
-
                 self.handle_ratelimit(response)
 
             except Exception as e:

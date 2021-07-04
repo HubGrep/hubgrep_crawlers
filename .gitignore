@@ -4,3 +4,4 @@ __pycache__
 init.sh
 *.gz
 env_*
+sync_*
