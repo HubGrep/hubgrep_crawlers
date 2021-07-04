@@ -31,17 +31,20 @@ class GitLabCrawler(ICrawler):
         state = super().set_state(state)
         return state
 
-    def handle_ratelimit(self, response):
-        remaining = int(response.headers.get("RateLimit-Remaining", -1))
-        reset_ts = int(response.headers.get("RateLimit-Reset", -1))
-        if remaining == -1 or reset_ts == -1:
-            # without headers we use default throttling
-            super().handle_ratelimit(response)
-        elif remaining == 0:
-            # otherwise spam&sleep
-            sleep_s = reset_ts - time.time()
-            logger.info(f"ratelimit exceeded for {self}, sleeping for {sleep_s} seconds...")
-            time.sleep(sleep_s)
+    def handle_ratelimit(self, response = None):
+        if response:
+            remaining = int(response.headers.get("RateLimit-Remaining", -1))
+            reset_ts = int(response.headers.get("RateLimit-Reset", -1))
+            if remaining == -1 or reset_ts == -1:
+                logger.warning("no ratelimit found in gitlab response headers")
+                super().handle_ratelimit(response)
+            elif remaining == 0:
+                # otherwise spam&sleep
+                sleep_s = reset_ts - time.time()
+                logger.info(f"ratelimit exceeded for {self}, sleeping for {sleep_s} seconds...")
+                time.sleep(sleep_s)
+        else:
+            super().handle_ratelimit()
 
     def crawl(self, state: dict = None) -> Tuple[bool, List[dict], dict]:
         """ :return: success, repos, state """
@@ -56,13 +59,13 @@ class GitLabCrawler(ICrawler):
             try:
                 response = self.requests.get(self.request_url, params=params)
                 if not response.ok:
-                    logger.warning(f"(skipping block part) gitlab - {self.base_url} " +
+                    logger.warning(f"(skipping block chunk) gitlab - {self.base_url} " +
                                    f"- response not ok, status: {response.status_code}")
                     logger.warning(response.headers.__dict__)
                     return False, [], state  # nr.1 - we skip rest of this block, hope we get it next time
                 repos = response.json()
             except Exception as e:
-                logger.exception(f"(skipping block part) gitlab crawler crashed")
+                logger.exception(f"(skipping block chunk) gitlab crawler crashed")
                 return False, [], state  # nr.2 - we skip rest of this block, hope we get it next time
 
             state['is_done'] = len(repos) != state['per_page']  # finish early, we reached the end

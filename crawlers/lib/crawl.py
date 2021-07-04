@@ -66,11 +66,11 @@ def crawl(platform: ICrawler) -> Generator[List[dict], None, None]:
     :param platform: which platform to crawl, with what credentials
     """
     logger.debug(f"START block: {platform.name} - initial state: {platform.state}")
-    for success, result_chunk, state in platform.crawl(platform.state):
+    for success, block_chunk, state in platform.crawl():
         if success:
-            logger.info(f"got {len(result_chunk)} results from {platform}")
-
-            yield result_chunk
+            logger.info(f"got {len(block_chunk)} results from {platform} "
+                        f"- first repo id: {next(iter(block_chunk), {}).get('id', None)}")
+            yield block_chunk
         else:
             # right now we dont want to emit failures (via yield) because that will send empty results back
             # to the indexer, which can trigger a state reset (i.e. reached end, start over).
@@ -92,8 +92,8 @@ def run_block(block_data: dict) -> List[dict]:
     )
     repos = []
     started_at = time.time()
-    for chunk in crawl(platform):
-        repos += chunk
+    for block_chunk in crawl(platform):
+        repos += block_chunk
     logger.info(
         f"{platform_type} - block yielded {len(repos)} results total, and took {time.time() - started_at}s"
     )

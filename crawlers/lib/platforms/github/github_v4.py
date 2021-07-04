@@ -46,7 +46,7 @@ class GitHubV4Crawler(ICrawler):
             self.requests.headers.update(
                 {"Authorization": f"Bearer {auth_data['access_token']}"})
 
-    def handle_ratelimit(self, response):
+    def handle_ratelimit(self, response=None):
         """
         Adjust requests to API limits
 
@@ -58,24 +58,29 @@ class GitHubV4Crawler(ICrawler):
               "resetAt": "2020-11-29T14:26:15Z"
             },
         """
-        rate_limit = response.json().get('data', {}).get('rateLimit', None)
-        if rate_limit:
-            ratelimit_remaining = rate_limit['remaining']
+        if response:
+            rate_limit = response.json().get('data', {}).get('rateLimit', None)
+            if rate_limit:
+                ratelimit_remaining = rate_limit['remaining']
 
-            reset_at = iso8601.parse_date(rate_limit['resetAt'])
-            ratelimit_reset_timestamp = reset_at.timestamp()
+                reset_at = iso8601.parse_date(rate_limit['resetAt'])
+                ratelimit_reset_timestamp = reset_at.timestamp()
 
-            reset_in = ratelimit_reset_timestamp - time.time()
+                reset_in = ratelimit_reset_timestamp - time.time()
+                # a bit longer, just to be sure
+                reset_in += 5
 
-            logger.info(
-                f'{self} {ratelimit_remaining} requests remaining, reset in {reset_in}s')
-            if ratelimit_remaining < 1:
-                logger.warning(
-                    f'{self} rate limiting: {ratelimit_remaining} requests remaining, sleeping {reset_in}s')
-                time.sleep(reset_in)
+                logger.info(
+                    f'{self} {ratelimit_remaining} requests remaining, reset in {reset_in}s')
+                if ratelimit_remaining < 1:
+                    logger.warning(
+                        f'{self} rate limiting: {ratelimit_remaining} requests remaining, sleeping {reset_in}s')
+                    time.sleep(reset_in)
+            else:
+                logger.warning("no ratelimit found in github response data")
+                super().handle_ratelimit()
         else:
-            logger.warning("no ratelimit found in github response data - using fallback throttling")
-            super().handle_ratelimit(response)
+            super().handle_ratelimit()
 
     @classmethod
     def set_state(cls, state: dict = None) -> dict:
@@ -91,7 +96,8 @@ class GitHubV4Crawler(ICrawler):
         state['empty_page_cnt'] = state.get('empty_page_cnt', 0)  # indicate that exploration has reached an end
         if not isinstance(state.get(BLOCK_KEY_IDS, None), list):
             state[BLOCK_KEY_IDS] = []  # list when we have known indexes to use as IDs
-        state[BLOCK_KEY_FROM_ID] = state.get(BLOCK_KEY_FROM_ID, 0)  # without known IDs, we start from the lowest ID number
+        state[BLOCK_KEY_FROM_ID] = state.get(BLOCK_KEY_FROM_ID,
+                                             0)  # without known IDs, we start from the lowest ID number
         state[BLOCK_KEY_TO_ID] = state.get(BLOCK_KEY_TO_ID, -1)
         if len(state[BLOCK_KEY_IDS]) > 0:
             state['current'] = state.get('current', state[BLOCK_KEY_IDS][0])
@@ -110,12 +116,14 @@ class GitHubV4Crawler(ICrawler):
     def get_ids(state: dict) -> list:
         """ Produce a subset of repository IDs from a larger known set, or a exploratory range within query max."""
         i = state['i'] * GITHUB_QUERY_MAX
-        # we use known IDs when we have them, otherwise explore incrementally
         if len(state[BLOCK_KEY_IDS]) > 0:
+            # we use known IDs when we have them
             indexes = state[BLOCK_KEY_IDS][i:i + GITHUB_QUERY_MAX]
             if len(indexes) > 0:
                 state['current'] = indexes[-1]
         else:
+            # otherwise explore incrementally within from/to
+            i += state[BLOCK_KEY_FROM_ID]
             indexes = range(i, i + GITHUB_QUERY_MAX)
             state['current'] += GITHUB_QUERY_MAX
 
@@ -150,28 +158,27 @@ class GitHubV4Crawler(ICrawler):
         state = state or self.state
         while self.has_next_crawl(state):
             try:
+                variables=self.get_graphql_variables(state)
                 response = self.requests.post(
                     url=self.request_url,
-                    json=dict(query=self.query, variables=self.get_graphql_variables(state))
+                    json=dict(query=self.query, variables=variables)
                 )
-                if not response.ok:
-                    logger.warning(f"(skipping block part) github response not ok, status: {response.status_code}")
+                if response.ok:
+                    repos = response.json()['data']['nodes']
+                    repos = self.remove_invalid_nodes(repos)
+                    if len(repos) == 0:
+                        state['empty_page_cnt'] += 1
+                    yield True, repos, state
+                else:
+                    logger.warning(f"(skipping block chunk) github response not ok, status: {response.status_code}")
                     logger.warning(response.headers.__dict__)
-                    self.handle_ratelimit(response)
-                    state = self.set_state(state)
                     yield False, [], state
-                    continue  # skip to next crawl
-
-                repos = response.json()['data']['nodes']
-                repos = self.remove_invalid_nodes(repos)
-
-                if len(repos) == 0:
-                    state['empty_page_cnt'] += 1
-
-                yield True, repos, state
                 self.handle_ratelimit(response)
+
             except Exception as e:
-                logger.exception(f"(skipping block part) github crawler crashed")
+                logger.exception(f"(skipping block chunk) github crawler crashed")
+                yield False, [], state
+                self.handle_ratelimit()
 
             state = self.set_state(state)  # update state for next round
 
