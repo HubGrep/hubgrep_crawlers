@@ -30,6 +30,9 @@ def get_requests_session():
         total=3, backoff_factor=10, status_forcelist=[429, 500, 502, 503, 504]
     )
     session.mount("https://", HTTPAdapter(max_retries=retries))
+    indexer_api_key = current_app.config.get("INDEXER_API_KEY", None)
+    if indexer_api_key:
+        session.headers.update({"Authorization": f"Basic {indexer_api_key}"})
     return session
 
 
