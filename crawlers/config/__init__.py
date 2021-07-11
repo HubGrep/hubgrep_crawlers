@@ -17,6 +17,7 @@ class Config:
 class _EnvironmentConfig(Config):
     CRAWLER_USER_AGENT = f'HobGrebbit v{Config.VERSION} {os.environ.get("HUBGREP_CRAWLERS_USER_AGENT_SUFFIX")}'
     INDEXER_URL = os.environ.get("HUBGREP_INDEXER_URL")
+    INDEXER_API_KEY = os.environ.get("HUBGREP_INDEXER_API_KEY")
 
 
 class ProductionConfig(_EnvironmentConfig):
