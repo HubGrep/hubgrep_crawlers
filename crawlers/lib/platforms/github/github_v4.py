@@ -212,7 +212,7 @@ class GitHubV4Crawler(ICrawler):
                     "id": "MDQ6VXNlcjEwMjQzNA==",
                     "url": "https://github.com/taxigps"
                 },
-                "repositoryTopics": {
+                "repositoryTopics": {   # <--- normally excluded as they cost 1 rate-limit point per topic
                     "nodes": []
                 },
                 "primaryLanguage": {

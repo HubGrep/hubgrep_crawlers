@@ -31,6 +31,13 @@ query inputArray($ids: [ID!]!) {
         id
         url
       }
+      repositoryTopics(first: 100) {
+        nodes {
+          topic {
+            name
+          }
+        }
+      }
       primaryLanguage {
         name
       }
