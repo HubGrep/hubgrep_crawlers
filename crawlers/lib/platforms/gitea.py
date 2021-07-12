@@ -1,31 +1,49 @@
 import logging
+from functools import reduce
 from typing import List, Tuple
 from urllib.parse import urljoin
 
-from crawlers.constants import GITEA_PER_PAGE_MAX
+from crawlers.constants import GITEA_PER_PAGE_MAX, GITEA_REPO_TOPICS_KEY
 from crawlers.lib.platforms.i_crawler import ICrawler
 
 logger = logging.getLogger(__name__)
 
 
 class GiteaCrawler(ICrawler):
-    name = 'gitea'
+    name = "gitea"
 
-    def __init__(self, base_url, state=None, auth_data=None, user_agent=None, **kwargs):
+    def __init__(self, base_url, state=None, auth_data=None, user_agent=None):
         super().__init__(
             base_url=base_url,
-            path='api/v1/repos/search',
+            path="api/v1/",
             state=self.set_state(state),
             auth_data=auth_data,
             user_agent=user_agent
         )
-        self.request_url = urljoin(self.base_url, self.path)
+        self.request_url = reduce(urljoin, [self.base_url, self.path, "repos/search"])
+        self.topics_url_template = reduce(urljoin, [self.base_url, self.path, "repos/{}/{}/topics"])
 
     @classmethod
     def set_state(cls, state: dict = None) -> dict:
         state["per_page"] = state.get("per_page", GITEA_PER_PAGE_MAX)
         state = super().set_state(state)
         return state
+
+    def crawl_repo_topics(self, repo_dict: dict):
+        owner_login = repo_dict["owner"]["login"]
+        repo_name = repo_dict["name"]
+        try:
+            topics_url = self.topics_url_template.format(owner_login, repo_name)
+            response = self.requests.get(topics_url)
+            if not response.ok:
+                logger.warning(f"(skipping repo topics) gitea - {topics_url} " +
+                               f"- response not ok, status: {response.status_code}")
+                return []
+            return response.json()[GITEA_REPO_TOPICS_KEY]
+
+        except Exception as e:
+            logger.exception(f"(skipping repo topics: {owner_login}/{repo_name}) crawling topics crashed")
+            return []
 
     def crawl(self, state: dict = None) -> Tuple[bool, List[dict], dict]:
         state = state or self.state
@@ -41,14 +59,19 @@ class GiteaCrawler(ICrawler):
                     logger.warning(f"(skipping block chunk) gitea - {self.base_url} " +
                                    f"- response not ok, status: {response.status_code}")
                     return False, [], state  # nr.1 - we skip rest of this block, hope we get it next time
-                result = response.json()
+                repo_list = response.json()["data"]
+                if not state.get("exclude_topics", False):
+                    for repo_dict in repo_list:
+                        # TODO unless we request topics in parallel, this slows down crawling by about 20x
+                        # TODO if not acceptable over time, subprocess each request
+                        repo_dict[GITEA_REPO_TOPICS_KEY] = self.crawl_repo_topics(repo_dict=repo_dict)
             except Exception as e:
                 logger.exception(f"(skipping block chunk) gitea crawler crashed")
                 return False, [], state  # nr.2 - we skip rest of this block, hope we get it next time
 
-            state['is_done'] = len(result['data']) != state['per_page']  # finish early, we reached the end
+            state['is_done'] = len(repo_list) != state['per_page']  # finish early, we reached the end
 
-            yield True, result['data'], state
+            yield True, repo_list, state
             self.handle_ratelimit(response)
             state = self.set_state(state)
 
