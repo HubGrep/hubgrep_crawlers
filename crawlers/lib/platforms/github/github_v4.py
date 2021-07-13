@@ -15,7 +15,7 @@ from requests import Response
 from crawlers.lib.platforms.i_crawler import ICrawler
 from crawlers.constants import (
     GITHUB_QUERY_MAX, BLOCK_KEY_FROM_ID, BLOCK_KEY_TO_ID, BLOCK_KEY_IDS,
-    GITHUB_API_ABUSE_SLEEP, GITHUB_ABUSE_RETRY_MAX
+    GITHUB_API_ABUSE_SLEEP, GITHUB_ABUSE_RETRY_MAX, GITHUB_RATELIMIT_SLEEP, GITHUT_RATELIMIT_ERROR_TYPE
 )
 
 logger = logging.getLogger(__name__)
@@ -152,6 +152,24 @@ class GitHubV4Crawler(ICrawler):
         return (state[BLOCK_KEY_TO_ID] == -1 or state['current'] < state[BLOCK_KEY_TO_ID]) \
                and state['empty_page_cnt'] < 10
 
+    @classmethod
+    def get_query_error_types(cls, errors) -> List:
+        """
+        Get a list of types found in errors.
+
+        Expected partial response json when errors are present:
+        {
+          "errors": [
+            {
+              "type": "RATE_LIMITED",
+              "message": "API rate limit exceeded for user ID 31818060."
+            }
+          ]
+        }
+        """
+        return list(map(lambda d: d["type"], errors))
+
+
     def crawl(self, state: dict = None) -> Tuple[bool, List[dict], dict]:
         """
         Run a GraphQL query against GitHubs V4 API.
@@ -187,7 +205,20 @@ class GitHubV4Crawler(ICrawler):
                     logger.warning(f"retrying block chunk failed after {GITHUB_ABUSE_RETRY_MAX} retries")
 
                 if response.ok:
-                    repos = response.json()['data']['nodes']
+                    json = response.json()
+                    error_types = self.get_query_error_types(json.get("errors", []))
+                    if GITHUT_RATELIMIT_ERROR_TYPE in error_types:
+                        # if ratelimit has been exceeded, we don't get the ratelimit dict but only a error dict
+                        # so we cannot know exactly how long we sleep for, but assume it was just reached before retry
+                        logger.debug(f"{error_types} - ratelimit was reached elsewhere - retry in {GITHUB_RATELIMIT_SLEEP}s")
+                        time.sleep(GITHUB_RATELIMIT_SLEEP)
+                        logger.debug(f"long ratelimit sleep over, retry query")
+                        response = send_query()
+                        json = response.json()
+                    elif len(error_types) > 0:
+                        logger.warning(f"got unknown query errors - json:\n{json}")
+
+                    repos = json['data']['nodes']
                     repos = self.remove_invalid_nodes(repos)
                     if len(repos) == 0:
                         state['empty_page_cnt'] += 1
