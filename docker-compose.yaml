@@ -42,7 +42,7 @@ services:
         flask cli crawl-type gitlab
         "
   github_crawler:
-    scale: 1
+    scale: 5
     extends: service
     command: >
       bash -ic " \
