@@ -153,7 +153,7 @@ class GitHubV4Crawler(ICrawler):
                and state['empty_page_cnt'] < 10
 
     @classmethod
-    def get_query_error_types(cls, errors) -> List:
+    def get_query_error_types(cls, errors, exclude: str = None) -> List:
         """
         Get a list of types found in errors, but excluding NOT_FOUND which is normally expected.
 
@@ -168,7 +168,9 @@ class GitHubV4Crawler(ICrawler):
         }
         """
         types = map(lambda d: d["type"], errors)
-        return list(filter(lambda s: s != "NOT_FOUND", types))
+        if exclude is not None:
+            types = filter(lambda s: s != exclude, types)
+        return list(types)
 
     def crawl(self, state: dict = None) -> Tuple[bool, List[dict], dict]:
         """
@@ -206,11 +208,12 @@ class GitHubV4Crawler(ICrawler):
 
                 if response.ok:
                     json = response.json()
-                    error_types = self.get_query_error_types(json.get("errors", []))
+                    error_types = self.get_query_error_types(json.get("errors", []), exclude="NOT_FOUND")
                     if GITHUT_RATELIMIT_ERROR_TYPE in error_types:
                         # if ratelimit has been exceeded, we don't get the ratelimit dict but only a error dict
                         # so we cannot know exactly how long we sleep for, but assume it was just reached before retry
-                        logger.debug(f"{error_types} - ratelimit was reached elsewhere - retry in {GITHUB_RATELIMIT_SLEEP}s")
+                        logger.debug(
+                            f"{error_types} - ratelimit was reached elsewhere - retry in {GITHUB_RATELIMIT_SLEEP}s")
                         time.sleep(GITHUB_RATELIMIT_SLEEP)
                         logger.debug(f"long ratelimit sleep over, retry query")
                         response = send_query()
