@@ -58,9 +58,18 @@ class GitHubV4Crawler(ICrawler):
               "resetAt": "2020-11-29T14:26:15Z"
             },
         """
-        if response:
-            rate_limit = response.json().get('data', {}).get('rateLimit', None)
-            if rate_limit:
+        if response is not None:
+            json = response.json()
+            rate_limit = json.get("data", {}).get('rateLimit', None)
+            if response.status_code == 403:
+                # we sometimes run in to some "hidden" abuse detection on multiple crawlers
+                # it tells use to wait a few minutes, but a few seconds is enough to be allowed again
+                # TODO don't see a way to avoid triggering this right now
+                # TODO it triggers even though we have plenty of ratelimit to spare
+                sleep_s = 5
+                logger.warning(f"status 403 sleeping for {sleep_s} - probably triggered abuse flag? json: {json}")
+                time.sleep(sleep_s)
+            elif rate_limit:
                 ratelimit_remaining = rate_limit['remaining']
 
                 reset_at = iso8601.parse_date(rate_limit['resetAt'])
@@ -171,7 +180,8 @@ class GitHubV4Crawler(ICrawler):
                     yield True, repos, state
                 else:
                     logger.warning(f"(skipping block chunk) github response not ok, status: {response.status_code}")
-                    logger.warning(response.headers.__dict__)
+                    logger.warning(f"headers: {response.headers.__dict__}")
+                    logger.warning(f"json: {response.json()}")
                     yield False, [], state
                 self.handle_ratelimit(response)
 
