@@ -13,6 +13,7 @@ CRAWLER_DEFAULT_THROTTLE = 0.1  # (seconds) unless an API has other means of thr
 # GitHub v4
 GITHUB_QUERY_MAX = 100
 GITHUB_API_ABUSE_SLEEP = 5  # we seem to be powerless against triggering this with multiple crawlers
+GITHUB_ABUSE_RETRY_MAX = 10
 
 # Gitea
 GITEA_PER_PAGE_MAX = 50
