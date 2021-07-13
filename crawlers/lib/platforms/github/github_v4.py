@@ -175,8 +175,8 @@ class GitHubV4Crawler(ICrawler):
                     # thus, we repeatedly try again to avoid having holes in our data (skipped block chunks)
                     # TODO don't see a way to avoid triggering this right now
                     # TODO it triggers even though we have plenty of ratelimit to spare
-                    logger.warning(f"""status 403 sleeping for {GITHUB_API_ABUSE_SLEEP}
-                                    - probably triggered abuse flag? json:\n{response.json()}""")
+                    logger.warning(
+                        f"status 403 sleeping for {GITHUB_API_ABUSE_SLEEP} - probably triggered abuse flag? json:\n{response.json()}")
                     time.sleep(GITHUB_API_ABUSE_SLEEP)
                     response = send_query()
 
