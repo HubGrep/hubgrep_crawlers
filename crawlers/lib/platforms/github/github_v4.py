@@ -10,9 +10,12 @@ import base64
 from typing import List, Tuple
 from urllib.parse import urljoin
 from iso8601 import iso8601
+from requests import Response
 
 from crawlers.lib.platforms.i_crawler import ICrawler
-from crawlers.constants import GITHUB_QUERY_MAX, BLOCK_KEY_FROM_ID, BLOCK_KEY_TO_ID, BLOCK_KEY_IDS
+from crawlers.constants import (
+    GITHUB_QUERY_MAX, BLOCK_KEY_FROM_ID, BLOCK_KEY_TO_ID, BLOCK_KEY_IDS, GITHUB_API_ABUSE_SLEEP
+)
 
 logger = logging.getLogger(__name__)
 
@@ -59,25 +62,15 @@ class GitHubV4Crawler(ICrawler):
             },
         """
         if response is not None:
-            json = response.json()
-            rate_limit = json.get("data", {}).get('rateLimit', None)
-            if response.status_code == 403:
-                # we sometimes run in to some "hidden" abuse detection on multiple crawlers
-                # it tells use to wait a few minutes, but a few seconds is enough to be allowed again
-                # TODO don't see a way to avoid triggering this right now
-                # TODO it triggers even though we have plenty of ratelimit to spare
-                sleep_s = 5
-                logger.warning(f"status 403 sleeping for {sleep_s} - probably triggered abuse flag? json: {json}")
-                time.sleep(sleep_s)
-            elif rate_limit:
+            rate_limit = response.json().get("data", {}).get('rateLimit', None)
+            if rate_limit:
                 ratelimit_remaining = rate_limit['remaining']
-
                 reset_at = iso8601.parse_date(rate_limit['resetAt'])
                 ratelimit_reset_timestamp = reset_at.timestamp()
 
                 reset_in = ratelimit_reset_timestamp - time.time()
                 # a bit longer, just to be sure
-                reset_in += 5
+                reset_in += 1
 
                 logger.info(
                     f'{self} {ratelimit_remaining} requests remaining, reset in {reset_in}s')
@@ -165,13 +158,28 @@ class GitHubV4Crawler(ICrawler):
         :return: success, repos, state
         """
         state = state or self.state
+
+        def send_query() -> Response:
+            variables = self.get_graphql_variables(state)
+            return self.requests.post(
+                url=self.request_url,
+                json=dict(query=self.query, variables=variables)
+            )
+
         while self.has_next_crawl(state):
             try:
-                variables=self.get_graphql_variables(state)
-                response = self.requests.post(
-                    url=self.request_url,
-                    json=dict(query=self.query, variables=variables)
-                )
+                response = send_query()
+                while response.status_code == 403:
+                    # we sometimes run in to some "hidden" abuse detection on multiple crawlers
+                    # it tells use to wait a few minutes, but a few seconds is enough to be allowed again
+                    # thus, we repeatedly try again to avoid having holes in our data (skipped block chunks)
+                    # TODO don't see a way to avoid triggering this right now
+                    # TODO it triggers even though we have plenty of ratelimit to spare
+                    logger.warning(f"""status 403 sleeping for {GITHUB_API_ABUSE_SLEEP}
+                                    - probably triggered abuse flag? json:\n{response.json()}""")
+                    time.sleep(GITHUB_API_ABUSE_SLEEP)
+                    response = send_query()
+
                 if response.ok:
                     repos = response.json()['data']['nodes']
                     repos = self.remove_invalid_nodes(repos)
