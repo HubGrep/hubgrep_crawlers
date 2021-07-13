@@ -178,10 +178,13 @@ class GitHubV4Crawler(ICrawler):
                     # TODO don't see a way to avoid triggering this right now
                     # TODO it triggers even though we have plenty of ratelimit to spare
                     failed_count += 1
-                    logger.warning(f"status 403 sleeping for {GITHUB_API_ABUSE_SLEEP}"
+                    logger.warning(f"status 403 - retry block chunk in {GITHUB_API_ABUSE_SLEEP}s"
                                    f"- probably triggered abuse flag? json:\n{response.json()}")
                     time.sleep(GITHUB_API_ABUSE_SLEEP)
                     response = send_query()
+
+                if failed_count >= GITHUB_ABUSE_RETRY_MAX:
+                    logger.warning(f"retrying block chunk failed after {GITHUB_ABUSE_RETRY_MAX} retries")
 
                 if response.ok:
                     repos = response.json()['data']['nodes']
