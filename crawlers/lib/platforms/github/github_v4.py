@@ -155,7 +155,7 @@ class GitHubV4Crawler(ICrawler):
     @classmethod
     def get_query_error_types(cls, errors) -> List:
         """
-        Get a list of types found in errors.
+        Get a list of types found in errors, but excluding NOT_FOUND which is normally expected.
 
         Expected partial response json when errors are present:
         {
@@ -167,8 +167,8 @@ class GitHubV4Crawler(ICrawler):
           ]
         }
         """
-        return list(map(lambda d: d["type"], errors))
-
+        types = map(lambda d: d["type"], errors)
+        return list(filter(lambda s: s != "NOT_FOUND", types))
 
     def crawl(self, state: dict = None) -> Tuple[bool, List[dict], dict]:
         """
