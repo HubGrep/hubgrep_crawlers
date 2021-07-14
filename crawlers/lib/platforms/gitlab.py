@@ -85,6 +85,7 @@ class GitLabCrawler(ICrawler):
             'created_at': '2016-05-30T04:27:14.463Z',
             'default_branch': 'master',
             'tag_list': [],
+            'topics': ["probablyempty"],
             'ssh_url_to_repo': 'git@gitlab.com:dedekindbr/ufrrj.git',
             'http_url_to_repo': 'https://gitlab.com/dedekindbr/ufrrj.git',
             'web_url': 'https://gitlab.com/dedekindbr/ufrrj',
