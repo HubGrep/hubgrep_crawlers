@@ -8,7 +8,6 @@ import logging
 import time
 import base64
 from typing import List, Tuple
-from urllib.parse import urljoin
 from iso8601 import iso8601
 from requests import Response
 
@@ -34,21 +33,20 @@ query_repos_batch = get_query()
 class GitHubV4Crawler(ICrawler):
     """ Crawler retrieving data from GitHubs GraphQL API. """
 
-    name = 'github'
+    type: str = 'github'
 
-    def __init__(self, base_url, state=None, auth_data=None, user_agent=None, query=query_repos_batch, **kwargs):
+    def __init__(self, base_url, state=None, api_key=None, query=query_repos_batch, **kwargs):
         super().__init__(
             base_url=base_url,
             path='graphql',
             state=self.set_state(state),
-            auth_data=auth_data,
-            user_agent=user_agent
+            api_key=api_key,
+            **kwargs
         )
         self.query = query
-        self.request_url = urljoin(self.base_url, self.path)
-        if auth_data:
+        if api_key:
             self.requests.headers.update(
-                {"Authorization": f"Bearer {auth_data['access_token']}"})
+                {"Authorization": f"Bearer {api_key}"})
 
     def handle_ratelimit(self, response=None):
         """
@@ -183,7 +181,7 @@ class GitHubV4Crawler(ICrawler):
         def send_query() -> Response:
             variables = self.get_graphql_variables(state)
             return self.requests.post(
-                url=self.request_url,
+                url=self.crawl_url,
                 json=dict(query=self.query, variables=variables)
             )
 

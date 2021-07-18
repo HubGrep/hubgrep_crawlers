@@ -1,6 +1,5 @@
 import logging
 from typing import List, Tuple
-from urllib.parse import urljoin
 
 from crawlers.constants import GITEA_PER_PAGE_MAX
 from crawlers.lib.platforms.i_crawler import ICrawler
@@ -9,17 +8,16 @@ logger = logging.getLogger(__name__)
 
 
 class GiteaCrawler(ICrawler):
-    name = 'gitea'
+    type: str = 'gitea'
 
-    def __init__(self, base_url, state=None, auth_data=None, user_agent=None, **kwargs):
+    def __init__(self, base_url, state=None, api_key=None, **kwargs):
         super().__init__(
             base_url=base_url,
             path='api/v1/repos/search',
             state=self.set_state(state),
-            auth_data=auth_data,
-            user_agent=user_agent
+            api_key=api_key,
+            **kwargs
         )
-        self.request_url = urljoin(self.base_url, self.path)
 
     @classmethod
     def set_state(cls, state: dict = None) -> dict:
@@ -36,7 +34,7 @@ class GiteaCrawler(ICrawler):
                 page=state["page"]
             )
             try:
-                response = self.requests.get(self.request_url, params=params)
+                response = self.requests.get(self.crawl_url, params=params)
                 if not response.ok:
                     logger.warning(f"(skipping block chunk) gitea - {self.base_url} " +
                                    f"- response not ok, status: {response.status_code}")

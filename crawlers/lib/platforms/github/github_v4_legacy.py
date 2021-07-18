@@ -32,20 +32,19 @@ query = get_query()
 class GitHubV4Crawler(ICrawler):
     """
     """
-    name = 'github_v4_legacy'
+    type: str = 'github_v4_legacy'
 
-    def __init__(self, base_url, state=None, auth_data=None, user_agent=None, **kwargs):
+    def __init__(self, base_url, state=None, api_key=None, **kwargs):
         super().__init__(
             base_url=base_url,
             path='graphql',
             state=state,
-            auth_data=auth_data,
-            user_agent=user_agent
+            api_key=api_key,
+            **kwargs
         )
-        self.request_url = urljoin(self.base_url, self.path)
-        if auth_data:
+        if api_key:
             self.requests.headers.update(
-                {"Authorization": f"Bearer {auth_data['access_token']}"})
+                {"Authorization": f"Bearer {api_key}"})
 
     def handle_ratelimit(self, response):
         """

@@ -3,7 +3,6 @@ import time
 import requests
 from typing import List, Tuple
 from urllib.parse import urljoin
-from iso8601 import iso8601
 
 from crawlers.lib.platforms.i_crawler import ICrawler
 
@@ -11,24 +10,23 @@ logger = logging.getLogger(__name__)
 
 
 class BitBucketCrawler(ICrawler):
-    name = 'bitbucket'
+    type: str = 'bitbucket'
 
     # https://developer.atlassian.com/bitbucket/api/2/reference/resource/repositories
 
-    def __init__(self, base_url, state=None, auth_data=None, user_agent=None, **kwargs):
+    def __init__(self, base_url, state=None, api_key=None, **kwargs):
         super().__init__(
             base_url=base_url,
             path='',
             state=state,
-            auth_data=auth_data,
-            user_agent=user_agent
+            api_key=api_key,
+            **kwargs
         )
         self.access_token = None
         self.token_expites_at = 0
         self.refresh_token = None
-        self.client_id = auth_data.get('client_id')
-        self.client_secret = auth_data.get('client_secret')
-        self.request_url = urljoin(self.base_url, self.path)
+        self.client_id = api_key.get('client_id')
+        self.client_secret = api_key.get('client_secret')
 
     def request(self, url):
         if not self.access_token or self.token_expites_at < time.time():

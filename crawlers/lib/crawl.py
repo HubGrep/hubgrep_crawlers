@@ -65,7 +65,7 @@ def crawl(platform: ICrawler) -> Generator[List[dict], None, None]:
 
     :param platform: which platform to crawl, with what credentials
     """
-    logger.debug(f"START block: {platform.name} - initial state: {platform.state}")
+    logger.debug(f"START block: {platform.type} - initial state: {platform.state}")
     for success, block_chunk, state in platform.crawl():
         if success:
             logger.info(f"got {len(block_chunk)} results from {platform} "
@@ -76,19 +76,21 @@ def crawl(platform: ICrawler) -> Generator[List[dict], None, None]:
             # to the indexer, which can trigger a state reset (i.e. reached end, start over).
             # TODO deal with failures - what are they?
             pass
-    logger.debug(f"END block: {platform.name} - final state: {platform.state}")
+    logger.debug(f"END block: {platform.type} - final state: {platform.state}")
 
 
 def run_block(block_data: dict) -> List[dict]:
     platform_data = block_data["crawler"]
     platform_type = platform_data["type"]
     api_url = platform_data["api_url"]
-    api_auth_data = platform_data["request_headers"]
+    api_key = platform_data["api_key"]
+    crawler_request_headers = platform_data["crawler_request_headers"]
     platform = platforms[platform_type](
         base_url=api_url,
         state=platforms[platform_type].state_from_block_data(block_data),
-        auth_data=api_auth_data,
+        api_key=api_key,
         user_agent=current_app.config["CRAWLER_USER_AGENT"],
+        extra_headers=crawler_request_headers
     )
     repos = []
     started_at = time.time()

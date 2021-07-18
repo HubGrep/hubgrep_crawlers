@@ -41,21 +41,20 @@ class GitHubRESTCrawler(ICrawler):
     x-xss-protection: 1; mode=block
     """
 
-    name = 'github_rest'
+    type: str = 'github_rest'
 
-    def __init__(self, base_url, state=None, auth_data=None, user_agent=None, **kwargs):
+    def __init__(self, base_url, state=None, api_key=None, **kwargs):
         super().__init__(
             base_url=base_url,
             path='',
             state=state,
-            auth_data=auth_data,
-            user_agent=user_agent
+            api_key=api_key,
+            **kwargs
         )
-        self.request_url = urljoin(self.base_url, self.path)
-        if auth_data:
+        if api_key:
             self.requests.auth = (
-                auth_data['client_id'],
-                auth_data['client_secret'])
+                api_key['client_id'],
+                api_key['client_secret'])
 
     def request(self, url, params=None):
         response = False

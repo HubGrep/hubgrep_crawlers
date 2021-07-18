@@ -1,7 +1,6 @@
 import logging
 import time
 from typing import List, Tuple
-from urllib.parse import urljoin
 
 from crawlers.constants import GITLAB_PER_PAGE_MAX
 from crawlers.lib.platforms.i_crawler import ICrawler
@@ -9,21 +8,20 @@ from crawlers.lib.platforms.i_crawler import ICrawler
 logger = logging.getLogger(__name__)
 
 class GitLabCrawler(ICrawler):
-    name = 'gitlab'
+    type: str = 'gitlab'
 
     # https://docs.gitlab.com/ee/api/projects.html
 
-    def __init__(self, base_url, state=None, auth_data=None, user_agent=None, **kwargs):
+    def __init__(self, base_url, state=None, api_key=None, **kwargs):
         super().__init__(
             base_url=base_url,
             path='/api/v4/projects',
             state=self.set_state(state),
-            auth_data=auth_data,
-            user_agent=user_agent
+            api_key=api_key,
+            **kwargs
         )
-        self.request_url = urljoin(self.base_url, self.path)
-        if auth_data:
-            self.requests.headers.update({"PRIVATE-TOKEN": auth_data['PRIVATE-TOKEN']})
+        if api_key:
+            self.requests.headers.update({"PRIVATE-TOKEN": api_key})
 
     @classmethod
     def set_state(cls, state: dict = None) -> dict:
@@ -57,7 +55,7 @@ class GitLabCrawler(ICrawler):
                 sort='asc'
             )
             try:
-                response = self.requests.get(self.request_url, params=params)
+                response = self.requests.get(self.crawl_url, params=params)
                 if not response.ok:
                     logger.warning(f"(skipping block chunk) gitlab - {self.base_url} " +
                                    f"- response not ok, status: {response.status_code}")

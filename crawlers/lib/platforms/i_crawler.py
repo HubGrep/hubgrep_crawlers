@@ -3,6 +3,7 @@ import logging
 import math
 import requests
 import time
+from urllib.parse import urljoin
 from typing import List, Tuple
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
@@ -13,15 +14,19 @@ logger = logging.getLogger(__name__)
 
 
 class ICrawler:
-    name = None
+    type: str = None
 
-    def __init__(self, base_url, path, state, auth_data=None, user_agent=None):
+    def __init__(self, base_url, path, state, api_key=None, user_agent=None, extra_headers: dict = {}):
         self.base_url = base_url
         self.path = path
-        self.auth_data = auth_data
+        self.api_key = api_key
         self.state = state
+        self.extra_headers = extra_headers
+
+        self.crawl_url = urljoin(self.base_url, self.path)
 
         self.requests = requests.session()
+        self.requests.headers.update(self.extra_headers)
         retries = Retry(total=3,
                         backoff_factor=10,
                         status_forcelist=[429, 500, 502, 503, 504])
@@ -30,13 +35,13 @@ class ICrawler:
             self.requests.headers.update({"user-agent": user_agent})
 
     def __str__(self):
-        return f'<{self.name}@{self.base_url}>'
+        return f'<{self.type}@{self.base_url}>'
 
     def handle_ratelimit(self, response=None):
         logger.debug(f"default throttling - sleep for {CRAWLER_DEFAULT_THROTTLE}")
         time.sleep(CRAWLER_DEFAULT_THROTTLE)
 
-    def crawl(self, state: dict) -> Tuple[bool, List[dict], dict]:
+    def crawl(self, state: dict = None) -> Tuple[bool, List[dict], dict]:
         """ :return: success, repos, state """
         raise NotImplementedError
 
