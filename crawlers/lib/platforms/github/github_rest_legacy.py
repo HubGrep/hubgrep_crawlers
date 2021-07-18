@@ -46,20 +46,19 @@ class GitHubRESTCrawler(ICrawler):
     x-xss-protection: 1; mode=block
     """
 
-    name = 'github_rest_legacy'
+    type: str = 'github_rest_legacy'
 
-    def __init__(self, base_url, state=None, auth_data=None, user_agent=None, **kwargs):
+    def __init__(self, base_url, state=None, api_key=None, **kwargs):
         super().__init__(
             base_url=base_url,
             path='',
             state=state,
-            auth_data=auth_data,
-            user_agent=user_agent
+            api_key=api_key,
+            **kwargs
         )
-        self.request_url = urljoin(self.base_url, self.path)
-        if auth_data:
+        if api_key:
             self.requests.headers.update(
-                {"Authorization": f"Bearer {auth_data['access_token']}"})
+                {"Authorization": f"Bearer {api_key['access_token']}"})
 
     def request(self, url, params=None):
         response = False
