@@ -41,6 +41,7 @@ services:
         pip install -r requirements.txt
         flask cli crawl-type gitlab
         "
+
   github_crawler:
     scale: 1
     extends: service
@@ -49,6 +50,7 @@ services:
         pip install -r requirements.txt
         flask cli crawl-type github
         "
+
 networks:
   hubgrep:
     name: hubgrep
