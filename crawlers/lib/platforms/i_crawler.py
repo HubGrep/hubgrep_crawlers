@@ -32,7 +32,7 @@ class ICrawler:
                         status_forcelist=[429, 500, 502, 503, 504])
         self.requests.mount("https://", HTTPAdapter(max_retries=retries))
         if user_agent is not None:
-            self.requests.headers.update({"user-agent": user_agent})
+            self.requests.headers.update({"User-Agent": user_agent})
 
     def __str__(self):
         return f'<{self.type}@{self.base_url}>'

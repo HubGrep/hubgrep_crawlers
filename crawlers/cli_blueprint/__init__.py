@@ -5,6 +5,7 @@ CLI tool for crawler interactions.
 import os
 import logging
 import click
+import uuid
 from typing import List
 from urllib.parse import urljoin
 from flask import Blueprint, current_app
@@ -13,7 +14,6 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from crawlers.constants import CRAWLER_IS_RUNNING_ENV_KEY
 from crawlers.lib.crawl import process_block_url
-
 
 load_dotenv()
 
@@ -30,9 +30,16 @@ def get_requests_session():
         total=3, backoff_factor=10, status_forcelist=[429, 500, 502, 503, 504]
     )
     session.mount("https://", HTTPAdapter(max_retries=retries))
+    crawler_uuid = uuid.uuid4().hex
+    session.headers.update({
+        "User-Agent": current_app.config["CRAWLER_USER_AGENT"],
+        "X-Request-ID": crawler_uuid
+    })
     indexer_api_key = current_app.config.get("INDEXER_API_KEY", None)
     if indexer_api_key:
         session.headers.update({"Authorization": f"Basic {indexer_api_key}"})
+
+    logger.info(f"new session started - crawler uuid: {crawler_uuid}")
     return session
 
 
