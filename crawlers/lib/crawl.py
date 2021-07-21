@@ -80,7 +80,7 @@ def crawl(platform: ICrawler) -> Generator[List[dict], None, None]:
 
 
 def run_block(block_data: dict) -> List[dict]:
-    platform_data = block_data["crawler"]
+    platform_data = block_data["hosting_service"]
     platform_type = platform_data["type"]
     api_url = platform_data["api_url"]
     api_key = platform_data["api_key"]
