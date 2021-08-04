@@ -47,6 +47,8 @@ class GitHubV4Crawler(ICrawler):
         if api_key:
             self.requests.headers.update(
                 {"Authorization": f"Bearer {api_key}"})
+        else:
+            raise ValueError(f"{self.__class__.__name__} requires an api_key! value: {api_key}")
 
     def handle_ratelimit(self, response=None):
         """

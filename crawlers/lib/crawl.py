@@ -85,7 +85,7 @@ def run_block(block_data: dict) -> List[dict]:
     platform_data = block_data["hosting_service"]
     platform_type = platform_data["type"]
     api_url = platform_data["api_url"]
-    api_key = platform_data["api_key"]
+    api_key = platform_data.get("api_key", None)
     crawler_request_headers = platform_data["crawler_request_headers"]
     platform = platforms[platform_type](
         base_url=api_url,
