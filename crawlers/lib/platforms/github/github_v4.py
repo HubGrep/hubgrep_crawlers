@@ -14,7 +14,8 @@ from requests import Response
 from crawlers.lib.platforms.i_crawler import ICrawler
 from crawlers.constants import (
     GITHUB_QUERY_MAX, BLOCK_KEY_FROM_ID, BLOCK_KEY_TO_ID, BLOCK_KEY_IDS,
-    GITHUB_API_ABUSE_SLEEP, GITHUB_ABUSE_RETRY_MAX, GITHUB_RATELIMIT_SLEEP, GITHUT_RATELIMIT_ERROR_TYPE
+    GITHUB_API_ABUSE_SLEEP, GITHUB_ABUSE_RETRY_MAX, GITHUB_RATELIMIT_SLEEP, GITHUT_RATELIMIT_ERROR_TYPE,
+    DEFAULT_REQUEST_TIMEOUT
 )
 
 logger = logging.getLogger(__name__)
@@ -182,7 +183,8 @@ class GitHubV4Crawler(ICrawler):
             variables = self.get_graphql_variables(state)
             return self.requests.post(
                 url=self.crawl_url,
-                json=dict(query=self.query, variables=variables)
+                json=dict(query=self.query, variables=variables),
+                timeout=DEFAULT_REQUEST_TIMEOUT
             )
 
         while self.has_next_crawl(state):

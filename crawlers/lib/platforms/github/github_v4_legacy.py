@@ -15,6 +15,7 @@ from iso8601 import iso8601
 from urllib.parse import urljoin
 
 from crawlers.lib.platforms.i_crawler import ICrawler
+from crawlers.constants import DEFAULT_REQUEST_TIMEOUT
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +94,8 @@ class GitHubV4Crawler(ICrawler):
             variables = self.get_variables(cursor)
             response = self.requests.post(
                 urljoin(self.base_url, self.path),
-                json=dict(query=query, variables=variables)
+                json=dict(query=query, variables=variables),
+                timeout=DEFAULT_REQUEST_TIMEOUT
             )
             try:
                 data = response.json()

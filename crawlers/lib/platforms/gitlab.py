@@ -2,7 +2,7 @@ import logging
 import time
 from typing import List, Tuple
 
-from crawlers.constants import GITLAB_PER_PAGE_MAX
+from crawlers.constants import GITLAB_PER_PAGE_MAX, DEFAULT_REQUEST_TIMEOUT
 from crawlers.lib.platforms.i_crawler import ICrawler
 
 logger = logging.getLogger(__name__)
@@ -55,7 +55,7 @@ class GitLabCrawler(ICrawler):
                 sort='asc'
             )
             try:
-                response = self.requests.get(self.crawl_url, params=params)
+                response = self.requests.get(self.crawl_url, params=params, timeout=DEFAULT_REQUEST_TIMEOUT)
                 if not response.ok:
                     logger.warning(f"(skipping block chunk) gitlab - {self.base_url} " +
                                    f"- response not ok, status: {response.status_code}")

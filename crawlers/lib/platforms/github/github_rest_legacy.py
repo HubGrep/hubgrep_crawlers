@@ -10,7 +10,8 @@ import time
 import math
 from typing import List, Tuple
 from urllib.parse import urljoin
-from iso8601 import iso8601
+
+from crawlers.constants import DEFAULT_REQUEST_TIMEOUT
 
 from crawlers.lib.platforms.i_crawler import ICrawler
 
@@ -64,7 +65,7 @@ class GitHubRESTCrawler(ICrawler):
         response = False
         while not response:
             try:
-                response = self.requests.get(url, params=params)
+                response = self.requests.get(url, params=params, timeout=DEFAULT_REQUEST_TIMEOUT)
                 response.raise_for_status()
             except Exception as e:
                 logger.error(e)
