@@ -6,6 +6,8 @@ from urllib.parse import urljoin
 
 from crawlers.lib.platforms.i_crawler import ICrawler
 
+from crawlers.constants import DEFAULT_REQUEST_TIMEOUT
+
 logger = logging.getLogger(__name__)
 
 
@@ -33,7 +35,8 @@ class BitBucketCrawler(ICrawler):
             response = self.requests.post(
                 urljoin('https://bitbucket.org', 'site/oauth2/access_token'),
                 data=dict(grant_type='client_credentials'),
-                auth=(self.client_id, self.client_secret)
+                auth=(self.client_id, self.client_secret),
+                timeout=DEFAULT_REQUEST_TIMEOUT
             )
             data = response.json()
             self.access_token = data['access_token']
@@ -41,7 +44,7 @@ class BitBucketCrawler(ICrawler):
             self.refresh_token = data['refresh_token']
             self.requests.headers["Authorization"] = f"Bearer {self.access_token}"
 
-        return self.requests.get(url)
+        return self.requests.get(url, timeout=DEFAULT_REQUEST_TIMEOUT)
 
     def crawl(self, state: dict = None) -> Tuple[bool, List[dict], dict]:
         """ :return: success, repos, state """
