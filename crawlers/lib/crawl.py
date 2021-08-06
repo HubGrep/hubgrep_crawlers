@@ -3,6 +3,7 @@ Main crawler processing.
 """
 import logging
 import time
+import uuid
 from typing import List, Generator
 from flask import current_app
 
@@ -19,6 +20,7 @@ max_errors = 5
 
 def _hoster_session_request(method, session, url, error_count=0, *args, **kwargs):
     try:
+        session.headers.update({"X-Request-ID": uuid.uuid4().hex})
         response = session.request(method, url, *args, **kwargs)
     except Exception as e:
         error_count += 1
@@ -80,16 +82,16 @@ def crawl(platform: ICrawler) -> Generator[List[dict], None, None]:
 
 
 def run_block(block_data: dict) -> List[dict]:
-    platform_data = block_data["crawler"]
+    platform_data = block_data["hosting_service"]
     platform_type = platform_data["type"]
     api_url = platform_data["api_url"]
-    api_key = platform_data["api_key"]
+    api_key = platform_data.get("api_key", None)
     crawler_request_headers = platform_data["crawler_request_headers"]
     platform = platforms[platform_type](
         base_url=api_url,
         state=platforms[platform_type].state_from_block_data(block_data),
         api_key=api_key,
-        user_agent=current_app.config["CRAWLER_USER_AGENT"],
+        user_agent=current_app.config["USER_AGENT"],
         extra_headers=crawler_request_headers
     )
     repos = []

@@ -1,6 +1,7 @@
 version: '3.1'
 
 services:
+
   service:
     build: .
     volumes:
@@ -8,7 +9,7 @@ services:
 
     env_file: .env
 
-    restart: ${RESTART}
+    restart: "${RESTART:-no}"
 
     # DISABLED as it was failing seemingly randomly (on mac)
     # uplink port to host

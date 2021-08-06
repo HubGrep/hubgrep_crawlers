@@ -32,8 +32,9 @@ def get_requests_session():
     session.mount("https://", HTTPAdapter(max_retries=retries))
     crawler_uuid = uuid.uuid4().hex
     session.headers.update({
-        "User-Agent": current_app.config["CRAWLER_USER_AGENT"],
-        "X-Request-ID": crawler_uuid
+        "User-Agent": current_app.config["USER_AGENT"],
+        "X-Correlation-ID": crawler_uuid,  # specific crawler
+        "Hubgrep-Crawler-Machine-ID": current_app.config["MACHINE_ID"]  # shared by "local" crawlers (all hosters)
     })
     indexer_api_key = current_app.config.get("INDEXER_API_KEY", None)
     if indexer_api_key:
