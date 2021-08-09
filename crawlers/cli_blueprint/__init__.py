@@ -6,6 +6,7 @@ import os
 import logging
 import click
 import uuid
+import base64
 from typing import List
 from urllib.parse import urljoin
 from flask import Blueprint, current_app
@@ -38,8 +39,9 @@ def get_requests_session():
     })
     indexer_api_key = current_app.config.get("INDEXER_API_KEY", None)
     if indexer_api_key:
-        session.headers.update({"Authorization": f"Basic {indexer_api_key}"})
-
+        indexer_api_key_b64_bytes = base64.b64encode(indexer_api_key.encode())
+        indexer_api_key_b64 = indexer_api_key_b64_bytes.decode()
+        session.headers.update({"Authorization": f"Basic {indexer_api_key_b64}"})
     logger.info(f"new session started - crawler uuid: {crawler_uuid}")
     return session
 
