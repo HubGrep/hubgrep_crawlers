@@ -26,7 +26,7 @@ services:
       - hubgrep
 
   gitea_crawler:
-    scale: 2
+    scale: 1
     extends: service
     command: >
       bash -ic " \
@@ -35,7 +35,7 @@ services:
         "
 
   gitlab_crawler:
-    scale: 3
+    scale: 1
     extends: service
     command: >
       bash -ic " \
@@ -44,7 +44,7 @@ services:
         "
 
   github_crawler:
-    scale: 3
+    scale: 2
     extends: service
     command: >
       bash -ic " \
