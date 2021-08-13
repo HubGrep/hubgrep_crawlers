@@ -84,7 +84,9 @@ def crawl(platform: ICrawler) -> Generator[List[dict], None, None]:
             # right now we dont want to emit failures (via yield) because that will send empty results back
             # to the indexer, which can trigger a state reset (i.e. reached end, start over).
             # - complete connection failures and such should be handled via raised exceptions within crawlers!
-            pass
+            if exception:
+                logger.warning(f"skipping chunk - failed with exception: {exception}")
+
     logger.debug(f"END block: {platform.type} - final state: {platform.state}")
 
 
