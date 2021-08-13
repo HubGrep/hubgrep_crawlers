@@ -6,11 +6,14 @@ import time
 import uuid
 from typing import List, Generator
 from flask import current_app
+from requests import ConnectionError, Timeout, TooManyRedirects
 
 from crawlers.constants import BLOCK_KEY_CALLBACK_URL
 
 from crawlers.lib.platforms.i_crawler import ICrawler
 from crawlers.lib.platforms import platforms
+from urllib3.exceptions import MaxRetryError
+from requests.exceptions import RequestException
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +57,11 @@ def process_block_url(session, block_url) -> None:
             f"skip crawl - no callback_url found! - key: {BLOCK_KEY_CALLBACK_URL}, block_data: {block_data}"
         )
     else:
-        repos = run_block(block_data)
+        try:
+            repos = run_block(block_data)
+        except (MaxRetryError, ConnectionError, Timeout, TooManyRedirects):
+            logger.exception("hosting service not reachable - no indexer callback issued")
+            return
         _hoster_session_request(
             "PUT", session, url=block_data[BLOCK_KEY_CALLBACK_URL], json=repos
         )
@@ -68,7 +75,7 @@ def crawl(platform: ICrawler) -> Generator[List[dict], None, None]:
     :param platform: which platform to crawl, with what credentials
     """
     logger.debug(f"START block: {platform.type} - initial state: {platform.state}")
-    for success, block_chunk, state in platform.crawl():
+    for success, block_chunk, state, exception in platform.crawl():
         if success:
             logger.info(f"got {len(block_chunk)} results from {platform} "
                         f"- first repo id: {next(iter(block_chunk), {}).get('id', None)}")
@@ -96,7 +103,7 @@ def run_block(block_data: dict) -> List[dict]:
     )
     repos = []
     started_at = time.time()
-    for block_chunk in crawl(platform):
+    for block_chunk, exception in crawl(platform):
         repos += block_chunk
     logger.info(
         f"{platform_type} - block yielded {len(repos)} results total, and took {time.time() - started_at}s"

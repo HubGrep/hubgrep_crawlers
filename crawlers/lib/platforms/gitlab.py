@@ -2,10 +2,14 @@ import logging
 import time
 from typing import List, Tuple
 
+from requests import ConnectionError, Timeout, TooManyRedirects
+from urllib3.exceptions import MaxRetryError
+
 from crawlers.constants import GITLAB_PER_PAGE_MAX, DEFAULT_REQUEST_TIMEOUT
 from crawlers.lib.platforms.i_crawler import ICrawler
 
 logger = logging.getLogger(__name__)
+
 
 class GitLabCrawler(ICrawler):
     type: str = 'gitlab'
@@ -29,7 +33,7 @@ class GitLabCrawler(ICrawler):
         state = super().set_state(state)
         return state
 
-    def handle_ratelimit(self, response = None):
+    def handle_ratelimit(self, response=None):
         if response:
             remaining = int(response.headers.get("RateLimit-Remaining", -1))
             reset_ts = int(response.headers.get("RateLimit-Reset", -1))
@@ -62,9 +66,13 @@ class GitLabCrawler(ICrawler):
                     logger.warning(response.headers.__dict__)
                     return False, [], state  # nr.1 - we skip rest of this block, hope we get it next time
                 repos = response.json()
+            except (MaxRetryError, ConnectionError, Timeout, TooManyRedirects) as e:
+                logger.exception(f"{self} - crawler cannot reach hoster")
+                # we re-raise these, as we want to avoid returning empty results to the indexer
+                raise e
             except Exception as e:
                 logger.exception(f"(skipping block chunk) gitlab crawler crashed")
-                return False, [], state  # nr.2 - we skip rest of this block, hope we get it next time
+                return False, [], state, e  # nr.2 - we skip rest of this block, hope we get it next time
 
             state['is_done'] = len(repos) != state['per_page']  # finish early, we reached the end
 
