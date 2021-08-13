@@ -46,7 +46,7 @@ class BitBucketCrawler(ICrawler):
 
         return self.requests.get(url, timeout=DEFAULT_REQUEST_TIMEOUT)
 
-    def crawl(self, state: dict = None) -> Tuple[bool, List[dict], dict, Union[Exception, None]]:
+    def crawl(self, state: dict = None) -> Tuple[bool, List[dict], dict]:
         """ :return: success, repos, state """
         url = False
         if state:

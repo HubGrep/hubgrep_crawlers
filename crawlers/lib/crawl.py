@@ -75,7 +75,7 @@ def crawl(platform: ICrawler) -> Generator[List[dict], None, None]:
     :param platform: which platform to crawl, with what credentials
     """
     logger.debug(f"START block: {platform.type} - initial state: {platform.state}")
-    for success, block_chunk, state, exception in platform.crawl():
+    for success, block_chunk, state in platform.crawl():
         if success:
             logger.info(f"got {len(block_chunk)} results from {platform} "
                         f"- first repo id: {next(iter(block_chunk), {}).get('id', None)}")
@@ -84,8 +84,7 @@ def crawl(platform: ICrawler) -> Generator[List[dict], None, None]:
             # right now we dont want to emit failures (via yield) because that will send empty results back
             # to the indexer, which can trigger a state reset (i.e. reached end, start over).
             # - complete connection failures and such should be handled via raised exceptions within crawlers!
-            if exception:
-                logger.warning(f"skipping chunk - failed with exception: {exception}")
+            pass
 
     logger.debug(f"END block: {platform.type} - final state: {platform.state}")
 

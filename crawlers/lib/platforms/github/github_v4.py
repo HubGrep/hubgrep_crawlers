@@ -175,7 +175,7 @@ class GitHubV4Crawler(ICrawler):
             types = filter(lambda s: s != exclude, types)
         return list(types)
 
-    def crawl(self, state: dict = None) -> Tuple[bool, List[dict], dict, Union[Exception, None]]:
+    def crawl(self, state: dict = None) -> Tuple[bool, List[dict], dict]:
         """
         Run a GraphQL query against GitHubs V4 API.
 
@@ -242,7 +242,7 @@ class GitHubV4Crawler(ICrawler):
                 raise e
             except Exception as e:
                 logger.exception(f"(skipping block chunk) github crawler crashed")
-                yield False, [], state, e
+                yield False, [], state
                 self.handle_ratelimit()
 
             state = self.set_state(state)  # update state for next round

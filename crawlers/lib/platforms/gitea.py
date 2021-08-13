@@ -28,7 +28,7 @@ class GiteaCrawler(ICrawler):
         state = super().set_state(state)
         return state
 
-    def crawl(self, state: dict = None) -> Tuple[bool, List[dict], dict, Union[Exception, None]]:
+    def crawl(self, state: dict = None) -> Tuple[bool, List[dict], dict]:
         state = state or self.state
         while self.has_next_crawl(state):
             params = dict(
@@ -49,7 +49,7 @@ class GiteaCrawler(ICrawler):
                 raise e
             except Exception as e:
                 logger.exception(f"(skipping block chunk) gitea crawler crashed")
-                return False, [], state, e  # nr.2 - we skip rest of this block, hope we get it next time
+                return False, [], state  # nr.2 - we skip rest of this block, hope we get it next time
 
             state['is_done'] = len(result['data']) != state['per_page']  # finish early, we reached the end
 

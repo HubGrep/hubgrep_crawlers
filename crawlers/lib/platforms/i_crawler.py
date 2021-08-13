@@ -41,7 +41,7 @@ class ICrawler:
         logger.debug(f"default throttling - sleep for {CRAWLER_DEFAULT_THROTTLE}")
         time.sleep(CRAWLER_DEFAULT_THROTTLE)
 
-    def crawl(self, state: dict = None) -> Tuple[bool, List[dict], dict, Union[Exception, None]]:
+    def crawl(self, state: dict = None) -> Tuple[bool, List[dict], dict]:
         """ :return: success, repos, state, Exception (if any) """
         raise NotImplementedError
 

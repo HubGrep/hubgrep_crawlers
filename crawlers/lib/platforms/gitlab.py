@@ -72,7 +72,7 @@ class GitLabCrawler(ICrawler):
                 raise e
             except Exception as e:
                 logger.exception(f"(skipping block chunk) gitlab crawler crashed")
-                return False, [], state, e  # nr.2 - we skip rest of this block, hope we get it next time
+                return False, [], state  # nr.2 - we skip rest of this block, hope we get it next time
 
             state['is_done'] = len(repos) != state['per_page']  # finish early, we reached the end
 
