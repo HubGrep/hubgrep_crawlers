@@ -7,9 +7,11 @@ import pathlib
 import logging
 import time
 import base64
-from typing import List, Tuple
+from typing import List, Tuple, Union
 from iso8601 import iso8601
 from requests import Response
+from requests.exceptions import Timeout, TooManyRedirects, ConnectionError
+from urllib3.exceptions import MaxRetryError
 
 from crawlers.lib.platforms.i_crawler import ICrawler
 from crawlers.constants import (
@@ -195,10 +197,9 @@ class GitHubV4Crawler(ICrawler):
                 failed_count = 0
                 while response.status_code == 403 and failed_count < GITHUB_ABUSE_RETRY_MAX:
                     # we sometimes run in to some "hidden" abuse detection on multiple crawlers
-                    # it tells use to wait a few minutes, but a few seconds is enough to be allowed again
+                    # it may tell us to wait a few minutes, but a few seconds is enough to be allowed again
                     # thus, we repeatedly try again to avoid having holes in our data (skipped block chunks)
-                    # TODO don't see a way to avoid triggering this right now
-                    # TODO it triggers even though we have plenty of ratelimit to spare
+                    # however, it might be other reason and other severities - hence we limit the retries
                     failed_count += 1
                     logger.warning(f"status 403 - retry block chunk in {GITHUB_API_ABUSE_SLEEP}s"
                                    f"- probably triggered abuse flag? json:\n{response.json()}")
@@ -235,6 +236,10 @@ class GitHubV4Crawler(ICrawler):
                     yield False, [], state
                 self.handle_ratelimit(response)
 
+            except (MaxRetryError, ConnectionError, Timeout, TooManyRedirects) as e:
+                logger.exception(f"{self} - crawler cannot reach hoster")
+                # we re-raise these, as we want to avoid returning empty results to the indexer
+                raise e
             except Exception as e:
                 logger.exception(f"(skipping block chunk) github crawler crashed")
                 yield False, [], state

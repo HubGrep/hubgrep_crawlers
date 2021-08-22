@@ -4,7 +4,7 @@ import math
 import requests
 import time
 from urllib.parse import urljoin
-from typing import List, Tuple
+from typing import List, Tuple, Union
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 
@@ -42,7 +42,7 @@ class ICrawler:
         time.sleep(CRAWLER_DEFAULT_THROTTLE)
 
     def crawl(self, state: dict = None) -> Tuple[bool, List[dict], dict]:
-        """ :return: success, repos, state """
+        """ :return: success, repos, state, Exception (if any) """
         raise NotImplementedError
 
     @staticmethod

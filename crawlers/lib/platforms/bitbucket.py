@@ -1,7 +1,7 @@
 import logging
 import time
 import requests
-from typing import List, Tuple
+from typing import List, Tuple, Union
 from urllib.parse import urljoin
 
 from crawlers.lib.platforms.i_crawler import ICrawler
@@ -65,7 +65,7 @@ class BitBucketCrawler(ICrawler):
                 logger.error(e)
                 logger.error(e.response.reason)
                 logger.error(e.response.text)
-                return False, [], {}
+                return False, [], {}, e
 
             response_json = response.json()
             repos = response_json['values']
